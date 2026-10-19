@@ -1,0 +1,2457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MATHS PRACTICE ENGINE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@5.1.2/marked.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<script>
+  MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']] }, svg: { fontCache:'global' }, startup: { ready() { MathJax.startup.defaultReady(); } } };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<style>
+[v-cloak]{display:none!important}
+:root{
+  --bg:#0a0a0f; --surface:#111118; --surface2:#18181f; --surface3:#1e1e28;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.12);
+  --text:#e8e8f0; --text2:#888899; --text3:#555566;
+  --accent:#e8ff47; --accent2:#b8ff00;
+  --red:#ff4757; --orange:#ff9f43; --yellow:#ffd32a; --green:#26de81; --blue:#45aaf2; --purple:#a29bfe;
+  --font-display:'Bebas Neue',sans-serif; --font-mono:'DM Mono',monospace; --font-body:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:14px}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+#app{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity:0.4;
+}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes slideIn{from{transform:translateX(-8px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+.fade-up{animation:fadeUp 0.3s ease forwards}
+.spin{animation:spin 1s linear infinite}
+.view{position:relative;z-index:1;flex:1 1 0;min-height:0;overflow:hidden;display:flex;flex-direction:column;animation:fadeUp 0.25s ease}
+
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;height:52px;flex-shrink:0;
+  border-bottom:1px solid var(--border);
+  background:rgba(10,10,15,0.9);backdrop-filter:blur(12px);
+  position:relative;z-index:10;
+}
+.topbar-brand{font-family:var(--font-display);font-size:22px;letter-spacing:2px;color:var(--accent)}
+.topbar-nav{display:flex;gap:4px}
+.topbar-btn{
+  display:flex;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:6px;border:none;cursor:pointer;
+  background:transparent;color:var(--text2);font-family:var(--font-body);
+  font-size:13px;transition:all 0.15s;
+}
+.topbar-btn:hover{background:var(--surface2);color:var(--text)}
+.topbar-btn.active{background:var(--surface3);color:var(--accent)}
+.topbar-btn svg{width:14px;height:14px}
+
+.setup-view{overflow-y:auto;flex:1}
+.setup-inner{max-width:900px;margin:0 auto;padding:40px 24px}
+.setup-hero{margin-bottom:48px}
+.setup-title{font-family:var(--font-display);font-size:clamp(48px,8vw,80px);line-height:0.95;color:var(--text);margin-bottom:16px}
+.setup-title span{color:var(--accent)}
+.setup-sub{color:var(--text2);font-size:15px;max-width:480px;line-height:1.6}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px;transition:border-color 0.2s}
+.card:hover{border-color:var(--border2)}
+.card-label{font-family:var(--font-mono);font-size:11px;letter-spacing:1px;color:var(--text3);text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.upload-zone{border:1px dashed var(--border2);border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden}
+.upload-zone:hover{border-color:var(--accent);background:rgba(232,255,71,0.03)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upload-zone-icon{font-size:32px;margin-bottom:12px}
+.upload-zone-text{color:var(--text2);font-size:14px}
+.upload-zone-text strong{color:var(--accent)}
+.upload-count{display:inline-flex;align-items:center;gap:8px;margin-top:12px;background:rgba(38,222,129,0.1);color:var(--green);padding:6px 14px;border-radius:20px;font-family:var(--font-mono);font-size:13px}
+.chapter-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.chapter-chip{padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:13px;transition:all 0.15s;text-align:left;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chapter-chip:hover{border-color:var(--border2);color:var(--text)}
+.chapter-chip.selected{border-color:var(--accent);background:rgba(232,255,71,0.08);color:var(--accent)}
+.chapter-chip-count{font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-top:2px}
+.config-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.config-grid{grid-template-columns:1fr}}
+.field-label{font-size:12px;color:var(--text2);margin-bottom:6px;font-family:var(--font-mono)}
+.field-input,.field-select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--font-body);font-size:14px;transition:border-color 0.15s;outline:none}
+.field-input:focus,.field-select:focus{border-color:var(--accent)}
+.field-select option{background:var(--surface2)}
+.toggle-row{display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface2);border-radius:8px;cursor:pointer}
+.toggle-label{font-size:13px;color:var(--text2);flex:1}
+.toggle-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.toggle-switch{width:36px;height:20px;border-radius:10px;background:var(--surface3);position:relative;transition:background 0.2s;flex-shrink:0}
+.toggle-switch.on{background:var(--accent)}
+.toggle-switch::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:7px;background:#000;transition:transform 0.2s}
+.toggle-switch.on::after{transform:translateX(16px)}
+.start-btn{width:100%;margin-top:24px;padding:16px;border-radius:10px;background:var(--accent);color:#000;font-family:var(--font-display);font-size:22px;letter-spacing:2px;border:none;cursor:pointer;transition:all 0.15s;position:relative;overflow:hidden}
+.start-btn:hover{background:var(--accent2);transform:translateY(-1px)}
+.start-btn:disabled{background:var(--surface3);color:var(--text3);cursor:not-allowed;transform:none}
+
+.practice-view{display:flex;flex-direction:column;flex:1;overflow:hidden}
+.practice-topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;height:48px;flex-shrink:0;
+  background:var(--surface);border-bottom:1px solid var(--border);gap:16px;
+}
+.practice-progress{flex:1;display:flex;align-items:center;gap:12px}
+.progress-track{flex:1;height:3px;background:var(--surface3);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 0.3s}
+.progress-label{font-family:var(--font-mono);font-size:12px;color:var(--text2);white-space:nowrap}
+.timer-display{font-family:var(--font-mono);font-size:16px;font-weight:500}
+.timer-display.warning{color:var(--red);animation:pulse 1s ease infinite}
+.timer-display.ok{color:var(--green)}
+.practice-body{flex:1;display:flex;overflow:hidden}
+.question-panel{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.question-image-area{flex:1;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.question-image-area img{max-width:100%;max-height:100%;object-fit:contain}
+.q-label{position:absolute;top:12px;left:12px;background:rgba(0,0,0,0.7);color:var(--text2);font-family:var(--font-mono);font-size:11px;padding:4px 8px;border-radius:4px}
+.chapter-badge{position:absolute;top:12px;right:12px;background:rgba(232,255,71,0.1);color:var(--accent);font-family:var(--font-mono);font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid rgba(232,255,71,0.2);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.question-footer{padding:12px 16px;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0}
+.answer-btns{display:flex;gap:6px}
+.ans-btn{width:44px;height:40px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:var(--font-mono);font-size:15px;font-weight:500;cursor:pointer;transition:all 0.15s}
+.ans-btn:hover{border-color:var(--accent);color:var(--accent)}
+.ans-btn.selected{background:var(--accent);border-color:var(--accent);color:#000}
+.nav-btns{display:flex;gap:8px}
+.nav-btn{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;font-family:var(--font-body);font-size:13px;transition:all 0.15s;white-space:nowrap}
+.nav-btn:hover{border-color:var(--border2);color:var(--text)}
+.nav-btn.primary{background:var(--accent);color:#000;border-color:var(--accent);font-weight:500}
+.nav-btn.primary:hover{background:var(--accent2)}
+.nav-btn.mark{border-color:var(--purple);color:var(--purple)}
+.nav-btn.mark:hover{background:rgba(162,155,254,0.1)}
+.nav-btn.marked{background:rgba(162,155,254,0.15);color:var(--purple);border-color:var(--purple)}
+.mark-next-btn{padding:8px 16px;border-radius:8px;border:1px solid rgba(162,155,254,0.5);background:rgba(162,155,254,0.1);color:var(--purple);cursor:pointer;font-family:var(--font-body);font-size:13px;transition:all 0.15s;white-space:nowrap}
+.mark-next-btn:hover{background:rgba(162,155,254,0.2)}
+.end-btn{padding:8px 16px;border-radius:8px;background:rgba(255,71,87,0.1);color:var(--red);border:1px solid rgba(255,71,87,0.3);cursor:pointer;font-size:13px;transition:all 0.15s}
+.end-btn:hover{background:rgba(255,71,87,0.2)}
+
+.pause-btn{padding:8px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer;font-size:13px;font-family:var(--font-body);transition:all 0.15s;white-space:nowrap}
+.pause-btn:hover{border-color:var(--accent);color:var(--accent)}
+.pause-btn.paused{background:rgba(232,255,71,0.1);border-color:rgba(232,255,71,0.4);color:var(--accent)}
+.pause-overlay{position:absolute;inset:0;background:rgba(10,10,15,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:5;backdrop-filter:blur(8px)}
+.pause-overlay-icon{font-size:52px}
+.pause-overlay-title{font-family:var(--font-display);font-size:36px;letter-spacing:3px;color:var(--text2)}
+.pause-overlay-sub{font-family:var(--font-mono);font-size:12px;color:var(--text3)}
+.pause-resume-btn{margin-top:8px;padding:12px 32px;border-radius:10px;background:var(--accent);color:#000;font-family:var(--font-display);font-size:20px;letter-spacing:2px;border:none;cursor:pointer;transition:all 0.15s}
+.pause-resume-btn:hover{background:var(--accent2);transform:translateY(-1px)}
+
+.q-elapsed{
+  display:flex;align-items:center;gap:5px;
+  font-family:var(--font-mono);font-size:13px;
+  padding:6px 10px;border-radius:7px;
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--text3);transition:color 0.3s,border-color 0.3s;
+  flex-shrink:0;
+}
+.q-elapsed.t-fast{color:var(--green);border-color:rgba(38,222,129,0.3)}
+.q-elapsed.t-warn{color:var(--yellow);border-color:rgba(255,211,42,0.3)}
+.q-elapsed.t-slow{color:var(--red);border-color:rgba(255,71,87,0.3);animation:pulse 1.4s ease infinite}
+.q-elapsed svg{width:11px;height:11px;opacity:0.6}
+
+.pal-btn-inner{display:flex;flex-direction:column;align-items:center;gap:0px;line-height:1}
+.pal-time{font-size:8px;color:var(--text3);font-family:var(--font-mono);margin-top:1px;line-height:1}
+.palette-btn.t-fast .pal-time{color:var(--green)}
+.palette-btn.t-warn .pal-time{color:var(--yellow)}
+.palette-btn.t-slow .pal-time{color:var(--red)}
+
+.time-chip{
+  font-family:var(--font-mono);font-size:10px;
+  padding:2px 7px;border-radius:4px;
+  background:var(--surface3);color:var(--text3);
+  flex-shrink:0;
+}
+.time-chip.t-fast{background:rgba(38,222,129,0.1);color:var(--green)}
+.time-chip.t-warn{background:rgba(255,211,42,0.1);color:var(--yellow)}
+.time-chip.t-slow{background:rgba(255,71,87,0.1);color:var(--red)}
+
+.palette-panel{width:200px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.palette-header{padding:12px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px}
+.palette-grid{flex:1;overflow-y:auto;padding:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:5px;align-content:start}
+.palette-btn{aspect-ratio:1;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text3);font-family:var(--font-mono);font-size:11px;cursor:pointer;transition:all 0.1s;position:relative;display:flex;align-items:center;justify-content:center}
+.palette-btn:hover{border-color:var(--border2);color:var(--text2)}
+.palette-btn.current{border-color:var(--accent)!important;color:var(--accent)!important}
+.palette-btn.answered{background:rgba(38,222,129,0.15);border-color:rgba(38,222,129,0.3);color:var(--green)}
+.palette-btn.visited{background:rgba(255,71,87,0.1);border-color:rgba(255,71,87,0.2);color:var(--red)}
+.palette-btn.marked::after{content:'';position:absolute;top:2px;right:2px;width:5px;height:5px;border-radius:50%;background:var(--purple)}
+.palette-legend{padding:10px 12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:5px}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text3);font-family:var(--font-mono)}
+.legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+
+.summary-view{display:flex;flex-direction:row;overflow:hidden;flex:1 1 0;min-height:0;height:100%}
+.summary-sidebar{width:300px;flex-shrink:0;display:flex;flex-direction:column;background:var(--surface);border-right:1px solid var(--border);overflow:hidden;min-height:0}
+.summary-score-block{padding:20px;border-bottom:1px solid var(--border);flex-shrink:0}
+.score-big{font-family:var(--font-display);font-size:56px;line-height:1;margin-bottom:4px}
+.score-big.good{color:var(--green)}
+.score-big.ok{color:var(--yellow)}
+.score-big.bad{color:var(--red)}
+.score-sub{font-family:var(--font-mono);font-size:12px;color:var(--text2)}
+.score-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.score-stat{background:var(--surface2);padding:10px;border-radius:8px}
+.score-stat-val{font-family:var(--font-mono);font-size:18px;font-weight:500}
+.score-stat-lbl{font-size:10px;color:var(--text3);margin-top:2px;font-family:var(--font-mono)}
+.summary-filters{padding:12px;border-bottom:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap;flex-shrink:0}
+.filter-chip{padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:var(--font-mono);transition:all 0.15s}
+.filter-chip:hover{border-color:var(--border2);color:var(--text)}
+.filter-chip.active{border-color:var(--accent);color:var(--accent);background:rgba(232,255,71,0.08)}
+.summary-list{flex:1 1 0;min-height:0;overflow-y:auto;padding:8px}
+.summary-item{padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:3px;border:1px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:10px}
+.summary-item:hover{background:var(--surface2);border-color:var(--border)}
+.summary-item.active{background:var(--surface3);border-color:var(--border2)}
+.summary-item-thumb{width:44px;height:36px;border-radius:4px;object-fit:cover;flex-shrink:0;background:var(--surface3);border:1px solid var(--border)}
+.summary-item-q{font-family:var(--font-mono);font-size:12px;color:var(--text2)}
+.summary-item-ch{font-size:10px;color:var(--text3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100px}
+.summary-badge{font-size:10px;font-family:var(--font-mono);padding:3px 8px;border-radius:10px;margin-left:auto;flex-shrink:0}
+.badge-correct{background:rgba(38,222,129,0.15);color:var(--green)}
+.badge-slow{background:rgba(255,211,42,0.15);color:var(--yellow)}
+.badge-calc_error{background:rgba(255,159,67,0.15);color:var(--orange)}
+.badge-concept_error{background:rgba(255,71,87,0.15);color:var(--red)}
+.badge-unmarked{background:var(--surface3);color:var(--text3)}
+.summary-sidebar-footer{padding:12px;border-top:1px solid var(--border);flex-shrink:0}
+.new-session-btn{width:100%;padding:10px;border-radius:8px;background:var(--accent);color:#000;font-family:var(--font-display);font-size:16px;letter-spacing:1px;border:none;cursor:pointer;transition:all 0.15s}
+.new-session-btn:hover{background:var(--accent2)}
+.summary-main{flex:1 1 0;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.summary-bottom{flex:0 0 280px;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--surface);border-top:1px solid var(--border)}
+.summary-controls{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;flex-wrap:wrap}
+.answer-compare{display:flex;gap:16px;align-items:center}
+.answer-block{display:flex;flex-direction:column}
+.answer-block-lbl{font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:3px}
+.answer-val{font-family:var(--font-mono);font-size:18px;font-weight:500;color:var(--blue)}
+.answer-correct-val{display:flex;align-items:center;gap:6px}
+.correct-badge-lg{width:28px;height:28px;border-radius:6px;background:var(--green);color:#000;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:14px;font-weight:bold}
+.edit-ans-btn{background:none;border:none;color:var(--text3);cursor:pointer;padding:2px;transition:color 0.15s}
+.edit-ans-btn:hover{color:var(--accent)}
+.edit-popover{position:relative}
+.edit-dropdown{position:absolute;top:calc(100% + 6px);left:0;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:6px;display:flex;gap:4px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
+.edit-opt{width:28px;height:28px;border-radius:6px;background:var(--surface3);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-family:var(--font-mono);font-size:13px;transition:all 0.1s;display:flex;align-items:center;justify-content:center}
+.edit-opt:hover{background:var(--accent);color:#000;border-color:var(--accent)}
+.result-btns{display:flex;gap:6px;flex-wrap:wrap}
+.result-btn{padding:6px 12px;border-radius:6px;border:1px solid;cursor:pointer;font-size:12px;font-family:var(--font-mono);transition:all 0.15s;background:transparent}
+.result-btn.concept{color:var(--red);border-color:rgba(255,71,87,0.4)}
+.result-btn.concept:hover,.result-btn.concept.active{background:rgba(255,71,87,0.15)}
+.result-btn.calc{color:var(--orange);border-color:rgba(255,159,67,0.4)}
+.result-btn.calc:hover,.result-btn.calc.active{background:rgba(255,159,67,0.15)}
+.result-btn.slow{color:var(--yellow);border-color:rgba(255,211,42,0.4)}
+.result-btn.slow:hover,.result-btn.slow.active{background:rgba(255,211,42,0.15)}
+.result-btn.correct{color:var(--green);border-color:rgba(38,222,129,0.4)}
+.result-btn.correct:hover,.result-btn.correct.active{background:rgba(38,222,129,0.15)}
+.ai-panel{flex:1;overflow-y:auto;padding:16px;background:var(--surface)}
+.ai-placeholder{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text3)}
+.ai-gen-btn{display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer;font-family:var(--font-body);font-size:14px;transition:all 0.15s}
+.ai-gen-btn:hover{border-color:var(--accent);color:var(--accent)}
+.ai-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:100%;color:var(--text2)}
+.ai-loading-ring{width:32px;height:32px;border-radius:50%;border:2px solid var(--surface3);border-top-color:var(--accent);animation:spin 0.8s linear infinite}
+
+.solution-wrap{font-size:13px;color:var(--text);line-height:1.7}
+.sol-steps{margin-bottom:16px}
+.sol-step{display:flex;gap:12px;margin-bottom:10px;animation:slideIn 0.2s ease forwards;opacity:0}
+.sol-step:nth-child(1){animation-delay:0.05s}
+.sol-step:nth-child(2){animation-delay:0.1s}
+.sol-step:nth-child(3){animation-delay:0.15s}
+.sol-step:nth-child(4){animation-delay:0.2s}
+.sol-step:nth-child(5){animation-delay:0.25s}
+.sol-num{flex-shrink:0;width:20px;height:20px;border-radius:4px;background:var(--surface3);color:var(--text3);font-family:var(--font-mono);font-size:10px;display:flex;align-items:center;justify-content:center;margin-top:2px}
+.sol-text{color:var(--text2);font-size:13px}
+.sol-shortcut{margin-top:12px;padding:10px 14px;background:rgba(162,155,254,0.08);border-left:2px solid var(--purple);border-radius:0 6px 6px 0}
+.sol-shortcut-label{font-family:var(--font-mono);font-size:10px;color:var(--purple);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.sol-shortcut-text{font-size:13px;color:var(--text2)}
+.sol-answer{margin-top:12px;padding:12px 14px;background:rgba(38,222,129,0.08);border:1px solid rgba(38,222,129,0.2);border-radius:8px;display:flex;align-items:center;gap:12px}
+.sol-answer-val{font-family:var(--font-mono);font-size:20px;color:var(--green);font-weight:500}
+.sol-answer-opt{font-family:var(--font-mono);font-size:12px;color:var(--text3)}
+.sol-trap{margin-top:8px;padding:8px 12px;background:rgba(255,71,87,0.05);border-left:2px solid rgba(255,71,87,0.3)}
+.sol-trap-text{font-size:12px;color:rgba(255,71,87,0.7)}
+.sol-raw{font-size:13px;color:var(--text2);line-height:1.7}
+.sol-raw p{margin-bottom:8px}
+.sol-raw strong{color:var(--text)}
+.sol-raw code{background:var(--surface2);padding:1px 5px;border-radius:3px;font-family:var(--font-mono);font-size:12px}
+
+.stats-view{overflow-y:auto;flex:1}
+.stats-inner{max-width:900px;margin:0 auto;padding:32px 24px}
+.stats-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
+.stats-title{font-family:var(--font-display);font-size:40px;color:var(--text)}
+.stats-overview{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:32px}
+.overview-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.overview-val{font-family:var(--font-display);font-size:36px;line-height:1;margin-bottom:4px}
+.overview-lbl{font-size:11px;color:var(--text3);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:1px}
+.chapter-table{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.table-header{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;padding:12px 16px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px}
+.table-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;padding:14px 16px;border-bottom:1px solid var(--border);align-items:center;transition:background 0.1s}
+.table-row:last-child{border-bottom:none}
+.table-row:hover{background:var(--surface2)}
+.chapter-name{font-weight:500;font-size:13px}
+.acc-bar{position:relative}
+.acc-track{height:4px;background:var(--surface3);border-radius:2px;margin-bottom:4px;overflow:hidden}
+.acc-fill{height:100%;border-radius:2px;transition:width 0.5s}
+.acc-fill.good{background:var(--green)}
+.acc-fill.ok{background:var(--yellow)}
+.acc-fill.bad{background:var(--red)}
+.acc-val{font-family:var(--font-mono);font-size:12px}
+.weak-tag{font-size:10px;font-family:var(--font-mono);padding:2px 8px;border-radius:10px;background:rgba(255,71,87,0.12);color:var(--red)}
+.mono-val{font-family:var(--font-mono);font-size:13px}
+
+.stats-section-title{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:12px;margin-top:32px;display:flex;align-items:center;gap:8px}
+.stats-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.due-banner{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:20px}
+.due-banner.urgent{border-color:rgba(232,255,71,0.3);background:rgba(232,255,71,0.04)}
+.due-left{display:flex;align-items:center;gap:16px}
+.due-count{font-family:var(--font-display);font-size:48px;line-height:1;color:var(--accent)}
+.due-label{font-size:13px;color:var(--text2)}
+.due-sub{font-size:11px;color:var(--text3);font-family:var(--font-mono);margin-top:2px}
+.due-chips{display:flex;gap:8px}
+.due-chip{padding:5px 12px;border-radius:20px;font-size:11px;font-family:var(--font-mono);border:1px solid}
+.due-chip.new{background:rgba(69,170,242,0.1);border-color:rgba(69,170,242,0.3);color:var(--blue)}
+.due-chip.review{background:rgba(162,155,254,0.1);border-color:rgba(162,155,254,0.3);color:var(--purple)}
+
+.trend{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:11px}
+.trend.up{color:var(--green)}
+.trend.down{color:var(--red)}
+.trend.flat{color:var(--text3)}
+
+.err-breakdown{display:flex;gap:3px;height:6px;border-radius:3px;overflow:hidden;margin-top:4px;min-width:60px}
+.err-seg{height:100%;transition:width 0.4s}
+.err-seg.concept{background:var(--red)}
+.err-seg.calc{background:var(--orange)}
+.err-seg.slow{background:var(--yellow)}
+.err-seg.correct{background:var(--green)}
+
+.table-header-v2{display:grid;grid-template-columns:1.8fr 1fr 1fr 0.8fr 0.8fr 1fr;padding:10px 16px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px}
+.table-row-v2{display:grid;grid-template-columns:1.8fr 1fr 1fr 0.8fr 0.8fr 1fr;padding:13px 16px;border-bottom:1px solid var(--border);align-items:center;transition:background 0.1s}
+.table-row-v2:last-child{border-bottom:none}
+.table-row-v2:hover{background:var(--surface2)}
+.staleness-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block}
+.unseen-bar{height:4px;background:var(--surface3);border-radius:2px;margin-top:4px;overflow:hidden}
+.unseen-fill{height:100%;background:var(--blue);border-radius:2px}
+.unseen-val{font-family:var(--font-mono);font-size:11px;color:var(--blue)}
+.stale-tag{font-size:10px;font-family:var(--font-mono);padding:2px 7px;border-radius:10px;background:rgba(255,159,67,0.12);color:var(--orange)}
+.improving-tag{font-size:10px;font-family:var(--font-mono);padding:2px 7px;border-radius:10px;background:rgba(38,222,129,0.1);color:var(--green)}
+.declining-tag{font-size:10px;font-family:var(--font-mono);padding:2px 7px;border-radius:10px;background:rgba(255,71,87,0.1);color:var(--red)}
+
+.srs-health-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px}
+.srs-bar{height:14px;border-radius:7px;overflow:hidden;display:flex;margin-bottom:14px;background:var(--surface3)}
+.srs-seg{height:100%;transition:width 0.6s;min-width:0}
+.srs-seg.srs-overdue{background:var(--red)}
+.srs-seg.srs-inbank{background:var(--orange)}
+.srs-seg.srs-upcoming{background:var(--purple)}
+.srs-seg.srs-mastered{background:var(--green)}
+.srs-seg.srs-unseen{background:var(--surface3);outline:1px solid var(--border2)}
+.srs-legend{display:flex;flex-wrap:wrap;gap:14px}
+.srs-leg-item{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text2);font-family:var(--font-mono)}
+.srs-leg-item b{color:var(--text);font-weight:600}
+.srs-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.srs-dot.srs-overdue{background:var(--red)}
+.srs-dot.srs-inbank{background:var(--orange)}
+.srs-dot.srs-upcoming{background:var(--purple)}
+.srs-dot.srs-mastered{background:var(--green)}
+.srs-dot.srs-unseen{background:var(--surface3);border:1px solid var(--border2)}
+
+.trend-chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 16px 12px}
+.trend-svg{width:100%;height:140px;display:block;overflow:visible}
+
+.heatmap-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;overflow-x:auto}
+.heatmap-grid{display:flex;gap:3px;min-width:max-content}
+.heatmap-week{display:flex;flex-direction:column;gap:3px}
+.heatmap-cell{width:13px;height:13px;border-radius:2px;flex-shrink:0;cursor:default}
+.hm-pad{background:transparent}
+.hm-empty{background:var(--surface3)}
+.hm-low{background:rgba(232,255,71,0.2)}
+.hm-mid{background:rgba(232,255,71,0.45)}
+.hm-high{background:rgba(232,255,71,0.72)}
+.hm-max{background:var(--accent)}
+.heatmap-legend{display:flex;align-items:center;gap:4px;margin-top:10px}
+
+.speed-bars-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:10px}
+.speed-row{display:grid;grid-template-columns:140px 1fr 52px;align-items:center;gap:12px}
+.speed-label{font-size:12px;color:var(--text2);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:capitalize}
+.speed-bar-track{height:6px;background:var(--surface3);border-radius:3px;overflow:hidden}
+.speed-bar-fill{height:100%;border-radius:3px;transition:width 0.5s}
+.speed-bar-fill.t-fast{background:var(--green)}
+.speed-bar-fill.t-warn{background:var(--yellow)}
+.speed-bar-fill.t-slow{background:var(--red)}
+.speed-val{font-family:var(--font-mono);font-size:11px;text-align:right}
+.speed-val.t-fast{color:var(--green)}
+.speed-val.t-warn{color:var(--yellow)}
+.speed-val.t-slow{color:var(--red)}
+.speed-empty{font-size:11px;color:var(--text3);font-family:var(--font-mono)}
+
+.offenders-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.offender-row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);transition:background 0.1s}
+.offender-row:last-child{border-bottom:none}
+.offender-row:hover{background:var(--surface2)}
+.offender-rank{font-family:var(--font-display);font-size:20px;line-height:1;color:var(--text3);width:28px;text-align:center;flex-shrink:0}
+.offender-info{flex:1;min-width:0}
+.offender-name{font-size:11px;color:var(--text2);font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.offender-chapter{font-size:10px;color:var(--text3);margin-top:2px;text-transform:capitalize}
+.offender-stats{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.offender-wrong{font-family:var(--font-mono);font-size:11px;color:var(--red);background:rgba(255,71,87,0.1);padding:2px 8px;border-radius:4px}
+.offender-streak{font-family:var(--font-mono);font-size:11px;color:var(--text3)}
+.offender-streak.has-streak{color:var(--green)}
+.stats-empty-msg{padding:24px;text-align:center;color:var(--text3);font-family:var(--font-mono);font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px}
+
+.problembank-view{display:flex;flex-direction:row;overflow:hidden;flex:1 1 0;min-height:0;height:100%}
+.pb-sidebar{width:280px;flex-shrink:0;display:flex;flex-direction:column;background:var(--surface);border-right:1px solid var(--border);overflow:hidden;min-height:0}
+.pb-header{padding:16px;border-bottom:1px solid var(--border)}
+.pb-title{font-family:var(--font-display);font-size:28px;margin-bottom:12px}
+.pb-tabs{display:flex;gap:4px;margin-bottom:10px}
+.pb-tab{flex:1;padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;transition:all 0.15s;font-family:var(--font-mono);text-align:center}
+.pb-tab.active.wrong{border-color:var(--red);color:var(--red);background:rgba(255,71,87,0.1)}
+.pb-tab.active.slow{border-color:var(--yellow);color:var(--yellow);background:rgba(255,211,42,0.1)}
+.pb-threshold{display:flex;gap:4px}
+.pb-thresh-btn{flex:1;padding:4px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:11px;cursor:pointer;transition:all 0.15s;font-family:var(--font-mono)}
+.pb-thresh-btn.active{border-color:var(--border2);color:var(--text);background:var(--surface2)}
+.pb-list{flex:1;overflow-y:auto;padding:8px}
+.pb-item{padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:4px;border:1px solid transparent;transition:all 0.12s;display:flex;justify-content:space-between;align-items:center}
+.pb-item:hover{background:var(--surface2);border-color:var(--border)}
+.pb-item.active{background:var(--surface3);border-color:var(--border2)}
+.pb-item-name{font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px;font-family:var(--font-mono)}
+.pb-item-ch{font-size:10px;color:var(--text3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px}
+.pb-item-count{font-family:var(--font-mono);font-size:13px;font-weight:500;flex-shrink:0}
+.pb-item-count.wrong{color:var(--red)}
+.pb-item-count.slow{color:var(--yellow)}
+.pb-empty{padding:32px;text-align:center;color:var(--text3);font-size:13px}
+.pb-main{flex:1 1 0;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.pb-image-area{flex:1 1 0;min-height:0;background:#050508;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.pb-image-area img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.pb-bottom{flex:0 0 260px;min-height:0;background:var(--surface);border-top:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.pb-bottom-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.pb-ai-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer;font-size:12px;transition:all 0.15s}
+.pb-ai-btn:hover{border-color:var(--accent);color:var(--accent)}
+.pb-solution{flex:1;overflow-y:auto;padding:12px}
+.pb-actions{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:6px;flex-shrink:0}
+.pb-action{flex:1;padding:7px;border-radius:6px;border:1px solid;cursor:pointer;font-size:11px;font-family:var(--font-mono);transition:all 0.15s;background:transparent;text-align:center}
+.pb-action.concept{color:var(--red);border-color:rgba(255,71,87,0.4)}
+.pb-action.concept:hover{background:rgba(255,71,87,0.15)}
+.pb-action.calc{color:var(--orange);border-color:rgba(255,159,67,0.4)}
+.pb-action.calc:hover{background:rgba(255,159,67,0.15)}
+.pb-action.slow{color:var(--yellow);border-color:rgba(255,211,42,0.4)}
+.pb-action.slow:hover{background:rgba(255,211,42,0.15)}
+.pb-action.correct{color:var(--green);border-color:rgba(38,222,129,0.4)}
+.pb-action.correct:hover{background:rgba(38,222,129,0.15)}
+
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text3);font-size:13px}
+.empty-state-icon{font-size:40px}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}
+.modal-box{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:28px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.6)}
+.modal-title{font-family:var(--font-display);font-size:28px;margin-bottom:24px;color:var(--text)}
+.modal-section{margin-bottom:20px}
+.modal-section-title{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:10px}
+.modal-row{display:flex;gap:8px;margin-bottom:8px}
+.modal-btn{flex:1;padding:9px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer;font-size:13px;transition:all 0.15s;text-align:center}
+.modal-btn:hover{border-color:var(--border);color:var(--text)}
+.modal-btn.danger{border-color:rgba(255,71,87,0.3);color:var(--red)}
+.modal-btn.danger:hover{background:rgba(255,71,87,0.1)}
+.modal-save{width:100%;margin-top:8px;padding:11px;border-radius:8px;background:var(--accent);color:#000;font-family:var(--font-display);font-size:18px;letter-spacing:1px;border:none;cursor:pointer;transition:all 0.15s}
+.modal-save:hover{background:var(--accent2)}
+.confirm-dialog{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:24px;width:100%;max-width:340px;text-align:center}
+.confirm-title{font-family:var(--font-display);font-size:24px;margin-bottom:8px}
+.confirm-sub{color:var(--text2);font-size:13px;margin-bottom:20px}
+.confirm-btns{display:flex;gap:8px;justify-content:center}
+.confirm-btn{padding:8px 24px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer;font-size:13px;transition:all 0.15s}
+.confirm-btn.confirm{background:var(--red);color:#fff;border-color:var(--red)}
+.confirm-btn.confirm:hover{background:#ff2233}
+.cloud-status{display:flex;align-items:center;justify-content:space-between;padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:10px}
+.cloud-user{font-family:var(--font-mono);font-size:12px;color:var(--green)}
+.cloud-actions{display:flex;gap:6px}
+.cloud-btn{padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--surface3);color:var(--text2);cursor:pointer;font-size:12px;transition:all 0.15s}
+.cloud-btn:hover{border-color:var(--border);color:var(--text)}
+
+.login-view{
+  position:fixed;inset:0;z-index:999;
+  background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:0;
+}
+.login-view::before{
+  content:'';position:fixed;inset:0;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity:0.5;
+}
+.login-inner{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;
+  gap:0;text-align:center;padding:24px;
+}
+.login-logo{
+  font-family:var(--font-display);
+  font-size:clamp(72px,14vw,120px);
+  line-height:0.88;color:var(--text);
+  margin-bottom:20px;
+}
+.login-logo span{color:var(--accent)}
+.login-sub{
+  color:var(--text2);font-size:14px;
+  max-width:360px;line-height:1.6;
+  margin-bottom:36px;
+  font-family:var(--font-body);
+}
+.login-badges{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:40px}
+.login-badge{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:1px;
+  padding:3px 10px;border-radius:20px;
+  border:1px solid var(--border2);color:var(--text3);
+}
+.login-badge.a{border-color:rgba(232,255,71,0.3);color:var(--accent)}
+.google-btn{
+  display:flex;align-items:center;gap:12px;
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:10px;padding:14px 28px;cursor:pointer;
+  color:var(--text);font-family:var(--font-body);font-size:15px;font-weight:500;
+  transition:all .2s;min-width:220px;justify-content:center;
+}
+.google-btn:hover{border-color:rgba(232,255,71,0.4);background:var(--surface2);transform:translateY(-1px)}
+.google-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.google-btn svg{width:20px;height:20px;flex-shrink:0}
+.login-err{color:var(--red);font-size:11px;font-family:var(--font-mono);margin-top:12px}
+.login-user-bar{
+  display:flex;align-items:center;gap:10px;
+  margin-top:12px;padding:10px 16px;
+  background:rgba(38,222,129,0.08);border:1px solid rgba(38,222,129,0.2);
+  border-radius:8px;font-family:var(--font-mono);font-size:12px;color:var(--green);
+}
+.login-user-bar img{width:24px;height:24px;border-radius:50%}
+
+/* Simple mobile layout: keep the question readable and put the question map below it. */
+@media (max-width: 700px) {
+  .practice-topbar {
+    padding: 0 8px;
+    gap: 6px;
+    height: 44px;
+  }
+  .practice-progress { gap: 6px; min-width: 0; }
+  .progress-label { font-size: 10px; }
+  .pause-btn, .end-btn { padding: 6px 8px; font-size: 11px; }
+  .practice-body {
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+  }
+  .question-panel {
+    flex: 0 0 auto;
+    min-width: 0;
+    overflow: visible;
+  }
+  .question-image-area {
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 0;
+    padding: 18px 0 0;
+  }
+  .question-image-area img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    max-height: 42vh;
+    object-fit: contain;
+  }
+  .q-label { top: 4px; left: 8px; }
+  .question-footer {
+    padding: 8px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .ans-btn { width: 36px; height: 36px; }
+  .nav-btns { gap: 4px; flex-wrap: wrap; }
+  .nav-btn, .mark-next-btn { padding: 8px 9px; font-size: 11px; }
+  .palette-panel {
+    width: auto;
+    min-width: 0;
+    flex: 0 0 96px;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+  .palette-header { padding: 5px 8px; font-size: 9px; }
+  .palette-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 3px;
+    padding: 4px 8px;
+  }
+  .palette-btn {
+    aspect-ratio: auto;
+    min-height: 24px;
+    border-radius: 4px;
+    font-size: 10px;
+  }
+  .palette-legend { display: none; }
+}
+
+</style>
+</head>
+<body>
+<div id="app" v-cloak>
+
+<div class="login-view" v-if="!cloudUser">
+  <div class="login-inner">
+    <div class="login-logo">PRACTICE<br><span>ENGINE</span></div>
+    <div class="login-sub">Image-based SRS practice with AI solutions.<br>Sign in to sync your progress across devices.</div>
+    <div class="login-badges">
+      <span class="login-badge a">SRS Engine</span>
+      <span class="login-badge a">Gemini AI</span>
+      <span class="login-badge">SHA-256 Hashing</span>
+      <span class="login-badge">Cloud Sync</span>
+      <span class="login-badge">Problem Bank</span>
+    </div>
+    <template v-if="authChecked">
+      <button class="google-btn" @click="signInGoogle" :disabled="authLoading">
+        <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        {{ authLoading ? 'Signing in…' : 'Continue with Google' }}
+      </button>
+      <div class="login-err" v-if="authError">{{ authError }}</div>
+    </template>
+    <template v-else>
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--text3);animation:pulse 1.2s ease infinite">Checking session…</div>
+    </template>
+  </div>
+</div>
+
+<template v-if="cloudUser">
+
+<div class="modal-overlay" v-if="showSettings" @click.self="showSettings=false">
+  <div class="modal-box">
+    <div class="modal-title">SETTINGS</div>
+    <div class="modal-section">
+      <div class="modal-section-title">Account</div>
+      <div v-if="cloudUser" class="cloud-status">
+        <div style="display:flex;align-items:center;gap:8px">
+          <img v-if="cloudUser.photoURL" :src="cloudUser.photoURL" style="width:24px;height:24px;border-radius:50%;border:1px solid var(--border2)">
+          <div class="cloud-user">{{ cloudUser.displayName || cloudUser.email }}</div>
+        </div>
+        <div class="cloud-actions">
+          <button class="cloud-btn" @click="syncToCloud" :disabled="isSyncing">{{ isSyncing ? '⟳ Syncing…' : '↑ Sync Now' }}</button>
+          <button class="cloud-btn" @click="signOut">Sign Out</button>
+        </div>
+      </div>
+      <div v-if="lastSynced" style="font-size:11px;color:var(--text3);font-family:var(--font-mono);margin-top:4px">Last synced: {{ lastSynced }}</div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Gemini API Key</div>
+      <input type="password" class="field-input" v-model="geminiKey" placeholder="AIza...">
+      <div style="font-size:11px;color:var(--text3);margin-top:6px;font-family:var(--font-mono)">Used for AI solutions. Stored locally only.</div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Data Management</div>
+      <div class="modal-row" style="margin-bottom:8px">
+        <button class="modal-btn" @click="exportData">⬇ Export Backup</button>
+        <label class="modal-btn" style="text-align:center;cursor:pointer">⬆ Import Backup<input type="file" accept=".json" @change="importData" style="display:none"></label>
+      </div>
+      <button class="modal-btn danger" style="width:100%" @click="confirmClear">✕ Clear All Data</button>
+    </div>
+    <button class="modal-save" @click="saveSettings">SAVE</button>
+  </div>
+</div>
+
+<div class="modal-overlay" v-if="confirmDialog.show" @click.self="dismissConfirm">
+  <div class="confirm-dialog">
+    <div class="confirm-title">{{ confirmDialog.title }}</div>
+    <div class="confirm-sub">{{ confirmDialog.message }}</div>
+    <div class="confirm-btns">
+      <button class="confirm-btn" @click="dismissConfirm">Cancel</button>
+      <button class="confirm-btn confirm" @click="runConfirmAction">{{ confirmDialog.label }}</button>
+    </div>
+  </div>
+</div>
+
+<div class="topbar" v-if="view !== 'practice'">
+  <span class="topbar-brand">MATHS PRACTICE</span>
+  <div class="topbar-nav">
+    <button class="topbar-btn" :class="{active: view==='setup'}" @click="navigateTo('setup')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+      Setup
+    </button>
+    <button class="topbar-btn" :class="{active: view==='stats'}" @click="navigateTo('stats')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
+      Stats
+    </button>
+    <button class="topbar-btn" :class="{active: view==='problem_bank'}" @click="navigateTo('problem_bank')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Problem Bank
+    </button>
+    <button class="topbar-btn" @click="showSettings=true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
+    </button>
+    <button class="topbar-btn" @click="syncToCloud" :style="cloudUser ? 'color:var(--green)' : ''" :disabled="isSyncing" :title="cloudUser ? cloudUser.displayName || cloudUser.email : 'Not signed in'">
+      <img v-if="cloudUser?.photoURL" :src="cloudUser.photoURL" style="width:16px;height:16px;border-radius:50%;margin-right:-2px">
+      {{ isSyncing ? '⟳' : '⇅' }} {{ isSyncing ? 'Syncing…' : 'Sync' }}
+    </button>
+  </div>
+</div>
+
+<div class="view setup-view" v-if="view==='setup'">
+  <div class="setup-inner">
+    <div class="setup-hero fade-up">
+      <div class="setup-title">PRACTICE<br><span>ENGINE</span></div>
+      <div class="setup-sub">Image-based SRS practice with AI solutions. Built for deep retention.</div>
+    </div>
+
+    <div class="card fade-up" style="animation-delay:0.05s">
+      <div class="card-label">01 — Load Question Bank</div>
+      <label class="upload-zone" :style="isHashing ? 'pointer-events:none;opacity:0.6' : ''">
+        <input type="file" webkitdirectory directory multiple @change="loadFiles" :disabled="isHashing">
+        <template v-if="!isHashing">
+          <div class="upload-zone-icon">📁</div>
+          <div class="upload-zone-text">Drop a folder or <strong>click to browse</strong><br>
+          Subfolders = chapters · No renaming needed</div>
+        </template>
+        <template v-else>
+          <div style="font-size:28px;margin-bottom:10px">⚡</div>
+          <div style="color:var(--accent);font-family:var(--font-mono);font-size:13px;margin-bottom:10px">Fingerprinting images... {{ hashProgress }}%</div>
+          <div style="width:200px;height:3px;background:var(--surface3);border-radius:2px;margin:0 auto;overflow:hidden">
+            <div :style="{width:hashProgress+'%',height:'100%',background:'var(--accent)',transition:'width 0.15s'}"></div>
+          </div>
+          <div style="color:var(--text3);font-size:11px;font-family:var(--font-mono);margin-top:10px">Rename files freely — identity tracked by full binary content</div>
+        </template>
+      </label>
+      <div v-if="allFiles.length > 0 && !isHashing" style="text-align:center;margin-top:12px">
+        <span class="upload-count">✓ {{ allFiles.length }} questions across {{ chapters.length }} chapters</span>
+      </div>
+    </div>
+
+    <div class="card fade-up" v-if="chapters.length > 0" style="animation-delay:0.1s">
+      <div class="card-label" style="cursor:default">
+        02 — Select Chapters
+        <button @click="toggleAll" style="background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;font-family:var(--font-mono);margin-left:8px">{{ selectedChapters.length === chapters.length ? 'NONE' : 'ALL' }}</button>
+      </div>
+      <div class="chapter-grid">
+        <button v-for="ch in chapters" :key="ch" class="chapter-chip" :class="{selected: selectedChapters.includes(ch)}" @click="toggleChapter(ch)">
+          {{ ch }}
+          <div class="chapter-chip-count">{{ chapterCounts[ch] }} q</div>
+        </button>
+      </div>
+    </div>
+
+    <div class="card fade-up" v-if="selectedChapters.length > 0" style="animation-delay:0.15s">
+      <div class="card-label">03 — Configure Session</div>
+      <div class="config-grid">
+        <div>
+          <div class="field-label">Questions (max {{ availableCount }})</div>
+          <input type="number" class="field-input" v-model.number="numQuestions" :max="availableCount" min="1">
+        </div>
+        <div>
+          <div class="field-label">Mode</div>
+          <select class="field-select" v-model="sessionMode">
+            <option value="practice">Untimed Practice</option>
+            <option value="timed">Timed Mock</option>
+          </select>
+        </div>
+        <div v-if="sessionMode === 'timed'">
+          <div class="field-label">Duration (minutes)</div>
+          <input type="number" class="field-input" v-model.number="sessionDuration" min="5" max="180">
+        </div>
+        <div>
+          <div class="field-label">Mix Strategy</div>
+          <select class="field-select" v-model="mixStrategy">
+            <option value="balanced">Balanced (75% New)</option>
+            <option value="focus_new">Focus New (95% New)</option>
+            <option value="focus_review">Focus Review (5% New)</option>
+          </select>
+        </div>
+      </div>
+      <div class="toggle-row" style="margin-top:12px" @click="reviewMode = !reviewMode">
+        <div>
+          <div class="toggle-label">Review Mode</div>
+          <div class="toggle-sub">Only show mastered questions (3+ correct streaks)</div>
+        </div>
+        <div class="toggle-switch" :class="{on: reviewMode}"></div>
+      </div>
+      <button class="start-btn" :disabled="numQuestions < 1 || availableCount < 1 || isHashing" @click="startSession">START SESSION</button>
+    </div>
+  </div>
+</div>
+
+<div class="view practice-view" v-if="view==='practice' && currentQ">
+  <div class="practice-topbar">
+    <div class="practice-progress">
+      <span class="progress-label" style="color:var(--text3);font-size:11px">Q{{ qIndex+1 }}/{{ session.length }}</span>
+      <div class="progress-track"><div class="progress-fill" :style="{width: ((qIndex+1)/session.length*100)+'%'}"></div></div>
+    </div>
+    <span class="timer-display" :class="sessionMode==='timed' ? (timeLeft<300 ? 'warning' : 'ok') : ''" v-if="sessionMode==='timed'">{{ formattedTime }}</span>
+    <button class="pause-btn" :class="{paused: isPaused}" @click="isPaused ? resumeSession() : pauseSession()">
+      {{ isPaused ? '▶ Resume' : '⏸ Pause' }}
+    </button>
+    <button class="end-btn" @click="confirmEndSession">End Test</button>
+  </div>
+
+  <div class="practice-body">
+    <div class="question-panel">
+      <div class="question-image-area">
+        <span class="q-label">Q{{ qIndex+1 }}</span>
+        <img :src="currentQ.url" @error="e=>e.target.style.display='none'" :key="currentQ.id">
+        <div class="pause-overlay" v-if="isPaused">
+          <div class="pause-overlay-icon">⏸</div>
+          <div class="pause-overlay-title">PAUSED</div>
+          <div class="pause-overlay-sub">Session timer is paused · Question hidden</div>
+          <button class="pause-resume-btn" @click="resumeSession">▶ RESUME</button>
+        </div>
+      </div>
+      <div class="question-footer">
+        <div class="answer-btns">
+          <button v-for="opt in ['A','B','C','D']" :key="opt" class="ans-btn" :class="{selected: currentQ.userAnswer===opt}" @click="selectAnswer(opt)" :disabled="isPaused">{{ opt }}</button>
+        </div>
+        <div class="nav-btns">
+          <button class="nav-btn" :class="{mark: !currentQ.markedForReview, marked: currentQ.markedForReview}" @click="toggleMark" :disabled="isPaused">
+            {{ currentQ.markedForReview ? '★ Marked' : '☆ Mark' }}
+          </button>
+          <button class="mark-next-btn" @click="markAndNext" :disabled="isPaused">Mark &amp; Next</button>
+          <button class="nav-btn primary" @click="nextQuestion" :disabled="isPaused">
+            {{ qIndex === session.length-1 ? 'Finish →' : 'Next →' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="palette-panel">
+      <div class="palette-header">Q Map</div>
+      <div class="palette-grid">
+        <button v-for="(q,i) in session" :key="i" class="palette-btn"
+          :class="[{current:i===qIndex, answered:q.userAnswer, visited:q.visited&&!q.userAnswer, marked:q.markedForReview}]"
+          @click="!isPaused && (qIndex=i)" :title="q.chapter + (q.timeSpent ? ' · ' + formatTime(q.timeSpent) : '')">
+          <span>{{ i+1 }}</span>
+        </button>
+      </div>
+      <div class="palette-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(38,222,129,0.5)"></div> Answered</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(255,71,87,0.4)"></div> Visited</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div> Marked</div>
+        <div class="legend-item" style="margin-top:4px;padding-top:4px;border-top:1px solid var(--border)">
+          <div style="display:flex;gap:4px;align-items:center">
+            <span style="color:var(--green);font-size:9px">●</span><span style="color:var(--yellow);font-size:9px">●</span><span style="color:var(--red);font-size:9px">●</span>
+          </div>
+          Fast / Med / Slow
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="view summary-view" v-if="view==='summary'">
+  <div class="summary-sidebar">
+    <div class="summary-score-block">
+      <div class="score-big" :class="accuracy>=75?'good':accuracy>=50?'ok':'bad'">{{ score }}<span style="font-size:28px;color:var(--text3)">/{{ markedCount }}</span></div>
+      <div class="score-sub">{{ accuracy.toFixed(1) }}% accuracy (attempted only)</div>
+      <div class="score-stats">
+        <div class="score-stat"><div class="score-stat-val" style="color:var(--green)">{{ resultCounts.correct }}</div><div class="score-stat-lbl">✓ Correct</div></div>
+        <div class="score-stat"><div class="score-stat-val" style="color:var(--yellow)">{{ resultCounts.slow }}</div><div class="score-stat-lbl">~ Slow</div></div>
+        <div class="score-stat"><div class="score-stat-val" style="color:var(--orange)">{{ resultCounts.calc_error }}</div><div class="score-stat-lbl"># Calc Err</div></div>
+        <div class="score-stat"><div class="score-stat-val" style="color:var(--red)">{{ resultCounts.concept_error }}</div><div class="score-stat-lbl">✗ Concept</div></div>
+        <div class="score-stat" style="grid-column:1/-1" v-if="avgTime !== null">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="score-stat-val" :style="'color:'+(avgTime<=60?'var(--green)':avgTime<=90?'var(--yellow)':'var(--red)')">{{ formatTime(avgTime) }}</div>
+            <div style="flex:1">
+              <div class="score-stat-lbl">Avg Time / Question</div>
+              <div style="display:flex;gap:3px;margin-top:4px">
+                <div v-for="q in session" :key="q.id" :title="formatTime(q.timeSpent)" :style="'flex:1;height:4px;border-radius:2px;background:'+(q.timeSpent<=60?'var(--green)':q.timeSpent<=90?'var(--yellow)':'var(--red)')"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="summary-filters">
+      <button v-for="f in summaryFilters" :key="f.val" class="filter-chip" :class="{active: summaryFilter===f.val}" @click="summaryFilter=f.val">{{ f.label }}</button>
+    </div>
+
+    <div class="summary-list">
+      <div v-for="q in filteredSummary" :key="q.id" class="summary-item" :class="{active: activeSummaryQ?.id===q.id}" @click="setSummaryQ(q)">
+        <img :src="q.url" class="summary-item-thumb" alt="" @error="e=>e.target.style.opacity='0.2'">
+        <div style="min-width:0;flex:1">
+          <div class="summary-item-q">Q{{ originalIndex(q)+1 }}</div>
+          <div class="summary-item-ch">{{ q.chapter }}</div>
+        </div>
+        <span class="time-chip" :class="q.timeSpent > 0 ? palTimeClass(q.timeSpent) : ''" v-if="q.timeSpent > 0" style="margin-right:4px">{{ formatTime(q.timeSpent) }}</span>
+        <span class="summary-badge" :class="'badge-'+(q.userMarking||'unmarked')">
+          {{ q.userMarking ? {correct:'✓',slow:'~',calc_error:'#',concept_error:'✗'}[q.userMarking] : '—' }}
+        </span>
+      </div>
+    </div>
+
+    <div class="summary-sidebar-footer">
+      <button class="new-session-btn" @click="goSetup">NEW SESSION</button>
+    </div>
+  </div>
+
+  <div class="summary-main">
+    <div v-if="!activeSummaryQ" style="flex:1 1 0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text3);gap:10px;background:var(--bg)">
+      <div style="font-size:40px">👈</div>
+      <div style="font-family:var(--font-mono);font-size:12px">Select a question from the list to review</div>
+    </div>
+
+    <template v-if="activeSummaryQ">
+      <div style="flex:1 1 0;min-height:0;width:100%;background:#050508;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative">
+        <img :src="activeSummaryQ.url" :key="activeSummaryQ.id" style="max-width:100%;max-height:100%;object-fit:contain;display:block" @error="e=>{e.target.style.opacity='0.15'}" @load="e=>e.target.style.opacity='1'">
+        <div v-if="!activeSummaryQ.url" style="position:absolute;color:var(--text3);font-family:var(--font-mono);font-size:12px">No image</div>
+        <div style="position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.75);color:var(--text2);font-family:var(--font-mono);font-size:11px;padding:4px 8px;border-radius:4px;pointer-events:none">Q{{ originalIndex(activeSummaryQ)+1 }}</div>
+        <div v-if="activeSummaryQ.timeSpent > 0" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.75);font-family:var(--font-mono);font-size:11px;padding:4px 10px;border-radius:4px;pointer-events:none;display:flex;align-items:center;gap:5px"
+          :style="'color:'+(activeSummaryQ.timeSpent<=60?'var(--green)':activeSummaryQ.timeSpent<=90?'var(--yellow)':'var(--red)')">
+          ⏱ {{ formatTime(activeSummaryQ.timeSpent) }}
+        </div>
+      </div>
+      <div class="summary-bottom">
+        <div class="summary-controls">
+          <div class="answer-compare">
+            <div class="answer-block">
+              <div class="answer-block-lbl">Your Answer</div>
+              <div class="answer-val">{{ activeSummaryQ.userAnswer || '—' }}</div>
+            </div>
+            <div class="answer-block">
+              <div class="answer-block-lbl">Correct</div>
+              <div class="answer-correct-val">
+                <div v-if="activeSummaryQ.correctAnswer" class="correct-badge-lg">{{ activeSummaryQ.correctAnswer }}</div>
+                <span v-else style="font-family:var(--font-mono);color:var(--text3);font-size:13px">?</span>
+                <div class="edit-popover">
+                  <button class="edit-ans-btn" @click="editingAnswer=!editingAnswer">✎</button>
+                  <div class="edit-dropdown" v-if="editingAnswer">
+                    <button v-for="o in ['A','B','C','D']" :key="o" class="edit-opt" @click="saveAnswer(activeSummaryQ,o)">{{ o }}</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="result-btns">
+            <button v-for="r in resultTypes" :key="r.val" class="result-btn" :class="[r.cls, {active: activeSummaryQ.userMarking===r.val}]" @click="markResult(activeSummaryQ, r.val)">{{ r.label }}</button>
+          </div>
+        </div>
+        <div class="ai-panel">
+          <div class="ai-placeholder" v-if="!activeSummaryQ.solution && !aiLoading">
+            <div style="font-size:24px">🤖</div>
+            <div style="font-size:13px">No solution yet</div>
+            <button class="ai-gen-btn" @click="generateSolution(activeSummaryQ)">Generate AI Solution</button>
+          </div>
+          <div class="ai-loading" v-if="aiLoading">
+            <div class="ai-loading-ring"></div>
+            <div style="font-size:13px;color:var(--text2)">Analyzing with Gemini...</div>
+          </div>
+          <div v-if="aiError" style="color:var(--red);font-size:13px;padding:8px">{{ aiError }}</div>
+          <div v-if="activeSummaryQ.solution && !aiLoading" class="solution-wrap" v-html="renderSolution(activeSummaryQ.solution)"></div>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<div class="view stats-view" v-if="view==='stats'">
+  <div class="stats-inner">
+    <div class="stats-header">
+      <div class="stats-title">PERFORMANCE</div>
+    </div>
+
+    <div class="due-banner fade-up" :class="{urgent: dueToday.total > 0}">
+      <div class="due-left">
+        <div class="due-count">{{ dueToday.total }}</div>
+        <div>
+          <div class="due-label">Questions due today</div>
+          <div class="due-sub">{{ dueToday.total === 0 ? 'All caught up! Load new questions.' : 'Recommended for your next session' }}</div>
+        </div>
+      </div>
+      <div class="due-chips">
+        <span class="due-chip new">{{ dueToday.fresh }} unseen</span>
+        <span class="due-chip review">{{ dueToday.review }} review</span>
+      </div>
+    </div>
+
+    <div class="stats-overview">
+      <div class="overview-card fade-up" v-for="(s,i) in overviewStats" :key="i" :style="'animation-delay:'+(i*0.05)+'s'">
+        <div class="overview-val" :style="'color:'+s.color">{{ s.val }}</div>
+        <div class="overview-lbl">{{ s.label }}</div>
+      </div>
+    </div>
+
+    <div class="stats-section-title fade-up">SRS Bank Health</div>
+    <div class="srs-health-wrap fade-up" v-if="srsHealth">
+      <div class="srs-bar">
+        <div class="srs-seg srs-overdue"  :style="'width:'+((srsHealth.overdue /srsHealth.total)*100).toFixed(1)+'%'"></div>
+        <div class="srs-seg srs-inbank"   :style="'width:'+((srsHealth.inBank  /srsHealth.total)*100).toFixed(1)+'%'"></div>
+        <div class="srs-seg srs-upcoming" :style="'width:'+((srsHealth.upcoming/srsHealth.total)*100).toFixed(1)+'%'"></div>
+        <div class="srs-seg srs-mastered" :style="'width:'+((srsHealth.mastered/srsHealth.total)*100).toFixed(1)+'%'"></div>
+        <div class="srs-seg srs-unseen"   :style="'width:'+((srsHealth.unseen  /srsHealth.total)*100).toFixed(1)+'%'"></div>
+      </div>
+      <div class="srs-legend">
+        <span class="srs-leg-item"><span class="srs-dot srs-overdue"></span>Overdue / Due Today <b>{{ srsHealth.overdue }}</b></span>
+        <span class="srs-leg-item"><span class="srs-dot srs-inbank"></span>Problem Bank <b>{{ srsHealth.inBank }}</b></span>
+        <span class="srs-leg-item"><span class="srs-dot srs-upcoming"></span>Upcoming (SRS) <b>{{ srsHealth.upcoming }}</b></span>
+        <span class="srs-leg-item"><span class="srs-dot srs-mastered"></span>Mastered <b>{{ srsHealth.mastered }}</b></span>
+        <span class="srs-leg-item"><span class="srs-dot srs-unseen"></span>Never Seen <b>{{ srsHealth.unseen }}</b></span>
+      </div>
+    </div>
+    <div v-else class="stats-empty-msg fade-up">Load your question folder to see bank health</div>
+
+    <div class="stats-section-title fade-up">Accuracy Trend <span style="font-size:10px;color:var(--text3);font-weight:400;margin-left:4px">12 weeks</span></div>
+    <div class="trend-chart-wrap fade-up" v-if="svgTrendPath && svgTrendPath.hasData">
+      <svg :viewBox="'0 0 '+svgTrendPath.W+' '+svgTrendPath.H" class="trend-svg" preserveAspectRatio="none">
+        <line v-for="pct in [0,25,50,75,100]" :key="'g'+pct"
+          :x1="svgTrendPath.padL" :x2="svgTrendPath.W-svgTrendPath.padR"
+          :y1="svgTrendPath.padT+(svgTrendPath.H-svgTrendPath.padT-svgTrendPath.padB)*(1-pct/100)"
+          :y2="svgTrendPath.padT+(svgTrendPath.H-svgTrendPath.padT-svgTrendPath.padB)*(1-pct/100)"
+          stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <text v-for="pct in [0,50,100]" :key="'yl'+pct"
+          :x="svgTrendPath.padL-4"
+          :y="svgTrendPath.padT+(svgTrendPath.H-svgTrendPath.padT-svgTrendPath.padB)*(1-pct/100)+4"
+          font-size="8" fill="rgba(255,255,255,0.25)" text-anchor="end" font-family="DM Mono,monospace">{{ pct }}%</text>
+        <line
+          :x1="svgTrendPath.padL" :x2="svgTrendPath.W-svgTrendPath.padR"
+          :y1="svgTrendPath.padT+(svgTrendPath.H-svgTrendPath.padT-svgTrendPath.padB)*0.25"
+          :y2="svgTrendPath.padT+(svgTrendPath.H-svgTrendPath.padT-svgTrendPath.padB)*0.25"
+          stroke="rgba(38,222,129,0.15)" stroke-width="1" stroke-dasharray="3,3"/>
+        <template v-for="(seg,si) in svgTrendPath.paths" :key="'a'+si">
+          <path v-if="seg.area" :d="seg.area" fill="rgba(232,255,71,0.07)"/>
+        </template>
+        <path v-for="(seg,si) in svgTrendPath.paths" :key="'l'+si"
+          :d="seg.line" fill="none" stroke="var(--accent)" stroke-width="2"
+          stroke-linejoin="round" stroke-linecap="round"/>
+        <template v-for="(p,i) in svgTrendPath.mapped" :key="'p'+i">
+          <g v-if="p.y!==null">
+            <circle :cx="p.x" :cy="p.y" r="3" fill="var(--accent)"/>
+            <title>{{ p.label }}: {{ p.acc ? p.acc.toFixed(1)+'%' : '—' }} ({{ p.practiced }} qs)</title>
+          </g>
+        </template>
+        <template v-for="(p,i) in svgTrendPath.mapped" :key="'xl'+i">
+          <text v-if="i%2===1||i===svgTrendPath.mapped.length-1"
+            :x="p.x" :y="svgTrendPath.H-4"
+            font-size="8" fill="rgba(255,255,255,0.25)" text-anchor="middle" font-family="DM Mono,monospace">{{ p.label }}</text>
+        </template>
+      </svg>
+    </div>
+    <div v-else class="stats-empty-msg fade-up">Practice across multiple weeks to see accuracy trend</div>
+
+    <div class="stats-section-title fade-up">Daily Activity <span style="font-size:10px;color:var(--text3);font-weight:400;margin-left:4px">last 13 weeks</span></div>
+    <div class="heatmap-wrap fade-up">
+      <div class="heatmap-grid">
+        <div v-for="(week,wi) in heatmapGrid" :key="wi" class="heatmap-week">
+          <div v-for="(day,di) in week" :key="di" class="heatmap-cell"
+            :class="!day ? 'hm-pad' : day.count===0 ? 'hm-empty' : day.intensity<0.25 ? 'hm-low' : day.intensity<0.5 ? 'hm-mid' : day.intensity<0.8 ? 'hm-high' : 'hm-max'"
+            :title="day ? day.date+' · '+day.count+' questions' : ''">
+          </div>
+        </div>
+      </div>
+      <div class="heatmap-legend">
+        <span style="font-size:10px;color:var(--text3);font-family:var(--font-mono)">Less</span>
+        <div class="heatmap-cell hm-empty"></div>
+        <div class="heatmap-cell hm-low"></div>
+        <div class="heatmap-cell hm-mid"></div>
+        <div class="heatmap-cell hm-high"></div>
+        <div class="heatmap-cell hm-max"></div>
+        <span style="font-size:10px;color:var(--text3);font-family:var(--font-mono)">More</span>
+      </div>
+    </div>
+
+    <div class="stats-section-title fade-up">Error Breakdown <span style="font-size:10px;color:var(--text3);font-weight:400;margin-left:4px">all time</span></div>
+    <div class="chapter-table fade-up" style="margin-bottom:8px">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border)">
+        <div v-for="e in errorBreakdown" :key="e.label" style="background:var(--surface);padding:16px 20px">
+          <div style="font-family:var(--font-display);font-size:32px;line-height:1;margin-bottom:4px" :style="'color:'+e.color">{{ e.count }}</div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:1px">{{ e.label }}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">{{ e.pct }}% of marked</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-section-title fade-up">Avg Speed by Chapter <span style="font-size:10px;color:var(--text3);font-weight:400;margin-left:4px">lower = faster</span></div>
+    <div class="speed-bars-wrap fade-up" v-if="speedByChapter.length">
+      <div v-for="s in speedByChapter" :key="s.chapter" class="speed-row">
+        <div class="speed-label" :title="s.chapter">{{ s.chapter }}</div>
+        <div class="speed-bar-track">
+          <div class="speed-bar-fill"
+            :class="s.avg<=60?'t-fast':s.avg<=90?'t-warn':'t-slow'"
+            :style="'width:'+Math.min(s.avg/180*100,100)+'%'">
+          </div>
+        </div>
+        <div class="speed-val" :class="s.avg<=60?'t-fast':s.avg<=90?'t-warn':'t-slow'">{{ formatTime(s.avg) }}</div>
+      </div>
+    </div>
+    <div v-else class="stats-empty-msg fade-up">Speed data builds up after more sessions — appears once questions are marked with timing</div>
+
+    <div class="stats-section-title fade-up">Repeat Offenders <span style="font-size:10px;color:var(--text3);font-weight:400;margin-left:4px">stuck questions · not yet mastered</span></div>
+    <div class="offenders-wrap fade-up" v-if="repeatOffenders.length">
+      <div v-for="(q,i) in repeatOffenders" :key="q.id" class="offender-row">
+        <div class="offender-rank">{{ i+1 }}</div>
+        <div class="offender-info">
+          <div class="offender-name">{{ q.name }}</div>
+          <div class="offender-chapter">{{ q.chapter }}</div>
+        </div>
+        <div class="offender-stats">
+          <span class="offender-wrong">✗ {{ q.times_wrong }}×</span>
+          <span class="offender-streak" :class="{'has-streak': q.correct_streak>0}">
+            streak {{ q.correct_streak }}/{{ 3 }}
+          </span>
+        </div>
+      </div>
+    </div>
+    <div v-else class="stats-empty-msg fade-up">🎯 No repeat offenders — looking clean!</div>
+
+    <div class="stats-section-title fade-up">Chapter Breakdown</div>
+    <div class="chapter-table fade-up" style="animation-delay:0.2s">
+      <div class="table-header-v2">
+        <div>Chapter</div>
+        <div>Accuracy</div>
+        <div>Error Mix</div>
+        <div>Unseen</div>
+        <div>Mastered</div>
+        <div>Status</div>
+      </div>
+      <div v-if="chapterStats.length === 0" style="padding:32px;text-align:center;color:var(--text3)">No data yet. Start practicing!</div>
+      <div v-for="s in chapterStats" :key="s.chapter" class="table-row-v2">
+        <div>
+          <div class="chapter-name" style="display:flex;align-items:center;gap:6px;text-transform:capitalize">
+            <span class="staleness-dot" :style="'background:'+s.stalenessColor" :title="s.stalenessLabel"></span>
+            {{ s.chapter }}
+          </div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-top:2px">{{ s.lastActive }}</div>
+        </div>
+        <div>
+          <div class="acc-bar">
+            <div class="acc-track"><div class="acc-fill" :class="s.acc===null?'':s.acc>=75?'good':s.acc>=50?'ok':'bad'" :style="s.acc!==null?'width:'+s.acc+'%':'width:0%'"></div></div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div class="acc-val" :style="'color:'+(s.acc===null?'var(--text3)':s.acc>=75?'var(--green)':s.acc>=50?'var(--yellow)':'var(--red)')">{{ s.acc !== null ? s.acc.toFixed(1)+'%' : '—' }}</div>
+              <div class="trend" :class="s.trend" v-if="s.trend !== 'none'" :title="'Recent: '+s.recentAcc.toFixed(1)+'%'">
+                {{ s.trend==='up' ? '↑' : s.trend==='down' ? '↓' : '→' }}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="err-breakdown" :title="'Concept:'+s.errMix.concept+' Calc:'+s.errMix.calc+' Slow:'+s.errMix.slow+' Correct:'+s.errMix.correct">
+            <div class="err-seg concept" :style="'width:'+s.errMix.conceptPct+'%'"></div>
+            <div class="err-seg calc"    :style="'width:'+s.errMix.calcPct+'%'"></div>
+            <div class="err-seg slow"    :style="'width:'+s.errMix.slowPct+'%'"></div>
+            <div class="err-seg correct" :style="'width:'+s.errMix.correctPct+'%'"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-top:3px">
+            <span style="color:var(--red)">{{ s.errMix.conceptPct }}%</span> concept ·
+            <span style="color:var(--orange)">{{ s.errMix.calcPct }}%</span> calc
+          </div>
+        </div>
+        <div>
+          <div class="unseen-val">{{ s.unseen }}</div>
+          <div class="unseen-bar"><div class="unseen-fill" :style="'width:'+s.unseenPct+'%'"></div></div>
+        </div>
+        <div class="mono-val" style="color:var(--blue)">{{ s.mastered }}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          <span v-if="s.isWeak" class="weak-tag">WEAK</span>
+          <span v-if="s.isStale" class="stale-tag">STALE</span>
+          <span v-if="s.trend==='up'" class="improving-tag">↑ IMPR</span>
+          <span v-if="s.trend==='down'" class="declining-tag">↓ DROP</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="view problembank-view" v-if="view==='problem_bank'">
+  <div class="pb-sidebar">
+    <div class="pb-header">
+      <div class="pb-title">PROBLEMS</div>
+      <div class="pb-tabs">
+        <button class="pb-tab" :class="{active: pbFilter==='wrong', wrong: pbFilter==='wrong'}" @click="pbFilter='wrong';activePBQ=null">Wrong</button>
+        <button class="pb-tab" :class="{active: pbFilter==='slow', slow: pbFilter==='slow'}" @click="pbFilter='slow';activePBQ=null">Slow</button>
+      </div>
+      <div class="pb-threshold">
+        <button v-for="t in [1,2,3]" :key="t" class="pb-thresh-btn" :class="{active: pbThreshold===t}" @click="pbThreshold=t;activePBQ=null">{{ t }}+</button>
+      </div>
+    </div>
+    <div class="pb-list">
+      <div v-if="problemBank.length===0" class="pb-empty">
+        <div style="font-size:28px;margin-bottom:8px">🎯</div>
+        No problems match this filter
+      </div>
+      <div v-for="q in problemBank" :key="q.id" class="pb-item" :class="{active: activePBQ?.id===q.id}" @click="setPBQ(q)">
+        <div style="min-width:0">
+          <div class="pb-item-name">{{ q.name }}</div>
+          <div class="pb-item-ch">{{ q.chapter }}</div>
+        </div>
+        <span class="pb-item-count" :class="pbFilter">{{ pbFilter==='wrong' ? q._hist.times_wrong : q._hist.times_slow }}×</span>
+      </div>
+    </div>
+  </div>
+  <div class="pb-main">
+    <div v-if="!activePBQ" class="empty-state">
+      <div class="empty-state-icon">📚</div>
+      <div>Select a problem to review</div>
+    </div>
+    <template v-if="activePBQ">
+      <div class="pb-image-area">
+        <img :src="activePBQ.url" :key="activePBQ.id">
+      </div>
+      <div class="pb-bottom">
+        <div class="pb-bottom-header">
+          <div class="answer-correct-val" style="gap:8px">
+            <span style="font-size:12px;color:var(--text3);font-family:var(--font-mono)">Answer:</span>
+            <div v-if="activePBQ.correctAnswer" class="correct-badge-lg">{{ activePBQ.correctAnswer }}</div>
+            <span v-else style="color:var(--text3);font-size:12px;font-family:var(--font-mono)">?</span>
+            <div class="edit-popover">
+              <button class="edit-ans-btn" @click="editingAnswer=!editingAnswer">✎</button>
+              <div class="edit-dropdown" v-if="editingAnswer">
+                <button v-for="o in ['A','B','C','D']" :key="o" class="edit-opt" @click="saveAnswer(activePBQ,o)">{{ o }}</button>
+              </div>
+            </div>
+            <span style="font-size:11px;color:var(--text3);font-family:var(--font-mono);margin-left:8px">
+              W:{{ activePBQ._hist?.times_wrong||0 }} S:{{ activePBQ._hist?.times_slow||0 }} ✓:{{ activePBQ._hist?.correct_streak||0 }}
+            </span>
+          </div>
+          <button class="pb-ai-btn" @click="generateSolution(activePBQ)">
+            {{ activePBQ.solution ? '↺ Regen' : '⚡ Solve' }}
+          </button>
+        </div>
+        <div class="pb-solution">
+          <div class="ai-loading" v-if="aiLoading" style="height:80px">
+            <div class="ai-loading-ring"></div>
+          </div>
+          <div v-if="aiError" style="color:var(--red);font-size:12px">{{ aiError }}</div>
+          <div v-if="activePBQ.solution && !aiLoading" class="solution-wrap" v-html="renderSolution(activePBQ.solution)"></div>
+          <div v-if="!activePBQ.solution && !aiLoading && !aiError" style="color:var(--text3);font-size:12px;font-family:var(--font-mono);padding:8px">Click ⚡ Solve to generate AI solution</div>
+        </div>
+        <div class="pb-actions">
+          <button v-for="r in resultTypes" :key="r.val" class="pb-action" :class="r.cls" @click="markResult(activePBQ, r.val)">{{ r.shortLabel }}</button>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>
+
+</template>
+</div>
+
+<script>
+const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
+
+const WEAK_THRESHOLD  = 75;
+const MASTERED_STREAK = 3;
+const CORRECT_INTERVALS = [10, 20, 35, 60, 90];
+const SLOW_INTERVALS    = [3, 10, 20, 35, 60];
+
+function makeEntry(chapter) {
+  return {
+    chapter, times_practiced:0, times_wrong:0, times_slow:0,
+    correct_streak:0, fast_correct_streak:0,
+    correctAnswer:null, last_practiced:null, next_due:null,
+    solution:null, events:[]
+  };
+}
+
+function today() {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().split('T')[0];
+}
+function addDays(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().split('T')[0];
+}
+
+function recompute(entry) {
+  let cStreak=0, fStreak=0, wrong=0, slow=0;
+  for (const ev of (entry.events || [])) {
+    if (ev.result==='correct')      { cStreak++; fStreak++; }
+    else if (ev.result==='slow')    { cStreak++; fStreak=0; slow++; }
+    else                            { cStreak=0; fStreak=0; wrong++; }
+  }
+  entry.correct_streak      = Math.max(0, cStreak);
+  entry.fast_correct_streak = Math.max(0, fStreak);
+  entry.times_wrong         = wrong;
+  entry.times_slow          = slow;
+  entry.times_practiced     = (entry.events || []).length;
+  return entry;
+}
+
+// ── FIX 1: ANTI-LEITNER INTERVAL RESET ──
+const WRONG_INTERVALS = [1, 3, 7, 14, 30, 45, 90];
+
+function setNextDue(entry, result) {
+  if (result === 'correct') {
+    const idx = Math.min(entry.correct_streak - 1, CORRECT_INTERVALS.length - 1);
+    entry.next_due = addDays(CORRECT_INTERVALS[Math.max(0, idx)]);
+  } else if (result === 'slow') {
+    const idx = Math.min(entry.correct_streak - 1, SLOW_INTERVALS.length - 1);
+    entry.next_due = addDays(SLOW_INTERVALS[Math.max(0, idx)]);
+  } else {
+    const idx = Math.min(entry.times_wrong - 1, WRONG_INTERVALS.length - 1);
+    entry.next_due = addDays(WRONG_INTERVALS[Math.max(0, idx)]);
+  }
+}
+
+// ── FIX 2: STRICT JSON AI PROMPT ──
+const AI_PROMPT = `You are an SSC Mathematics solution engine for SSC CGL/CHSL/MTS/GD/CPO exams. Given a multiple-choice maths question image, solve it using only SSC-standard methods (ratio, percentage, unitary, basic algebra/geometry).
+You MUST respond with a valid, raw JSON object ONLY — no markdown code fences, no introductory text, no trailing text.
+Use exactly this schema:
+{
+  "steps": ["Step 1 explanation", "Step 2 explanation"],
+  "formulaOrConcept": "Key formula used, if any",
+  "sscShortcut": "Time-saving trick or ratio shortcut, if applicable (or null)",
+  "commonTrap": "Common pitfall or silly mistake to avoid (or null)",
+  "finalAnswer": "The exact numerical or algebraic final answer",
+  "correctOption": "A"
+}
+Note: "correctOption" must be strictly one of: "A", "B", "C", or "D".`;
+
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAjvxrxisWGB-klhgbTkQ7s7TVMU3vNWBI",
+  authDomain: "my-ssc-app.firebaseapp.com",
+  projectId: "my-ssc-app",
+  storageBucket: "my-ssc-app.firebasestorage.app",
+  messagingSenderId: "359749494447",
+  appId: "1:359749494447:web:64b1285296b32031c4165a"
+};
+
+createApp({
+  setup() {
+    const view            = ref('setup');
+    const allFiles        = ref([]);
+    const chapters        = ref([]);
+    const selectedChapters= ref([]);
+    const numQuestions    = ref(20);
+    const sessionMode     = ref('practice');
+    const sessionDuration = ref(60);
+    const mixStrategy     = ref('balanced');
+    const reviewMode      = ref(false);
+
+    const session  = ref([]);
+    const qIndex   = ref(0);
+    const timeLeft = ref(0);
+    let timerHandle = null;
+
+    const activeSummaryQ = ref(null);
+    const summaryFilter  = ref('all');
+    const editingAnswer  = ref(false);
+
+    const pbFilter    = ref('wrong');
+    const pbThreshold = ref(2);
+    const activePBQ   = ref(null);
+
+    const aiLoading = ref(false);
+    const aiError   = ref(null);
+
+    const showSettings = ref(false);
+    const geminiKey    = ref('');
+
+    const cloudUser  = ref(null);
+    const isSyncing  = ref(false);
+    const lastSynced = ref('');
+    const authChecked = ref(false);
+    const authLoading = ref(false);
+    const authError   = ref('');
+
+    const history    = ref({});
+
+    const isHashing    = ref(false);
+    const hashProgress = ref(0);
+
+    const confirmDialog = ref({ show:false, title:'', message:'', label:'' });
+    const confirmAction = ref(() => {});
+
+    const qStartTime = ref(null);
+    const tick       = ref(0);
+    let   tickHandle = null;
+    const isPaused   = ref(false);
+
+    // ── FIX 3: DYNAMIC DAILY STATS ARCHITECTURE ──
+    const dailyStats = computed(() => {
+      const map = {};
+      for (const [id, h] of Object.entries(history.value)) {
+        for (const ev of (h.events || [])) {
+          if (!ev.date) continue;
+          const key = `${ev.date}|${h.chapter}`;
+          if (!map[key]) map[key] = { date: ev.date, chapter: h.chapter, practiced: 0, wrong: 0 };
+          map[key].practiced++;
+          if (ev.result === 'calc_error' || ev.result === 'concept_error') {
+            map[key].wrong++;
+          }
+        }
+      }
+      return Object.values(map);
+    });
+
+    const chapterCounts = computed(() => {
+      const m = {};
+      for (const f of allFiles.value) m[f.chapter] = (m[f.chapter]||0)+1;
+      return m;
+    });
+
+    const availableCount = computed(() =>
+      allFiles.value.filter(f => selectedChapters.value.includes(f.chapter)).length
+    );
+
+    const currentQ = computed(() => session.value[qIndex.value] || null);
+
+    const formattedTime = computed(() => {
+      const m = Math.floor(timeLeft.value/60).toString().padStart(2,'0');
+      const s = (timeLeft.value%60).toString().padStart(2,'0');
+      return `${m}:${s}`;
+    });
+
+    const liveElapsed = computed(() => {
+      tick.value;
+      if (!qStartTime.value) return session.value[qIndex.value]?.timeSpent || 0;
+      const banked  = session.value[qIndex.value]?.timeSpent || 0;
+      const current = Math.round((Date.now() - qStartTime.value) / 1000);
+      return banked + current;
+    });
+
+    const elapsedClass = computed(() => {
+      const s = liveElapsed.value;
+      if (s <= 60)  return 't-fast';
+      if (s <= 90) return 't-warn';
+      return 't-slow';
+    });
+
+    const avgTime = computed(() => {
+      const timed = session.value.filter(q => q.timeSpent > 0);
+      if (!timed.length) return null;
+      return Math.round(timed.reduce((a, b) => a + (b.timeSpent || 0), 0) / timed.length);
+    });
+
+    // ── FIX 11: ANTI-CHERRY-PICKING ACCURACY DENOMINATOR ──
+    const markedCount = computed(() =>
+      session.value.filter(q => !!q.userMarking || !!q.userAnswer).length
+    );
+    const score = computed(() =>
+      session.value.filter(q => q.userMarking==='correct' || q.userMarking==='slow').length
+    );
+    const accuracy = computed(() => markedCount.value > 0 ? (score.value/markedCount.value)*100 : 0);
+
+    const resultCounts = computed(() => {
+      const c = {correct:0, slow:0, calc_error:0, concept_error:0};
+      session.value.forEach(q => { if(q.userMarking) c[q.userMarking]++; });
+      return c;
+    });
+
+    const summaryFilters = [
+      {val:'all', label:'All'},
+      {val:'unmarked', label:'Unmarked'},
+      {val:'correct', label:'Correct'},
+      {val:'slow', label:'Slow'},
+      {val:'calc_error', label:'Calc Err'},
+      {val:'concept_error', label:'Concept'},
+    ];
+
+    const filteredSummary = computed(() => {
+      if (summaryFilter.value==='all') return session.value;
+      if (summaryFilter.value==='unmarked') return session.value.filter(q => !q.userMarking);
+      return session.value.filter(q => q.userMarking===summaryFilter.value);
+    });
+
+    const resultTypes = [
+      { val:'concept_error', label:'✗ Concept', shortLabel:'✗ Concept', cls:'concept' },
+      { val:'calc_error',    label:'# Calc',    shortLabel:'# Calc',    cls:'calc'    },
+      { val:'slow',          label:'~ Slow',    shortLabel:'~ Slow',    cls:'slow'    },
+      { val:'correct',       label:'✓ Correct', shortLabel:'✓ Correct', cls:'correct' },
+    ];
+
+    // ── FIX 4: TRUE TRAJECTORY & ALIGNED CHAPTER STATS ──
+    const chapterStats = computed(() => {
+      if (!chapters.value.length) return [];
+      const td = today();
+      return chapters.value.map(ch => {
+        const chFiles = allFiles.value.filter(f => f.chapter === ch);
+        const total_q = chFiles.length;
+        const hist_entries = Object.values(history.value).filter(h => h.chapter === ch);
+        
+        let total = 0, wrong = 0;
+        let concept = 0, calc = 0, slow = 0, correct = 0;
+        for (const h of hist_entries) {
+          for (const ev of (h.events || [])) {
+            total++;
+            if (ev.result === 'concept_error') { concept++; wrong++; }
+            else if (ev.result === 'calc_error') { calc++; wrong++; }
+            else if (ev.result === 'slow') { slow++; }
+            else if (ev.result === 'correct') { correct++; }
+          }
+        }
+        const acc = total > 0 ? ((total - wrong) / total) * 100 : null;
+
+        const cutoff7 = new Date(); cutoff7.setDate(cutoff7.getDate()-7); cutoff7.setMinutes(cutoff7.getMinutes()-cutoff7.getTimezoneOffset());
+        const cutStr7 = cutoff7.toISOString().split('T')[0];
+        
+        let recentTotal = 0, recentWrong = 0;
+        let priorTotal = 0, priorWrong = 0;
+        for (const h of hist_entries) {
+          for (const ev of (h.events || [])) {
+            if (ev.date >= cutStr7) {
+              recentTotal++;
+              if (ev.result === 'concept_error' || ev.result === 'calc_error') recentWrong++;
+            } else {
+              priorTotal++;
+              if (ev.result === 'concept_error' || ev.result === 'calc_error') priorWrong++;
+            }
+          }
+        }
+        const recentAcc = recentTotal > 0 ? ((recentTotal - recentWrong) / recentTotal) * 100 : null;
+        const priorAcc  = priorTotal > 0 ? ((priorTotal - priorWrong) / priorTotal) * 100 : acc;
+
+        let trend = 'none';
+        if (recentAcc !== null && priorAcc !== null && priorTotal > 0) {
+          const diff = recentAcc - priorAcc;
+          if (diff > 8) trend = 'up';
+          else if (diff < -8) trend = 'down';
+          else trend = 'flat';
+        }
+
+        const errTotal = concept+calc+slow+correct || 1;
+        const errMix = {
+          concept, calc, slow, correct,
+          conceptPct: Math.round(concept/errTotal*100),
+          calcPct:    Math.round(calc/errTotal*100),
+          slowPct:    Math.round(slow/errTotal*100),
+          correctPct: Math.round(correct/errTotal*100),
+        };
+        const seen_ids = new Set(Object.keys(history.value));
+        const unseen   = chFiles.filter(f => !seen_ids.has(f.id)).length;
+        const unseenPct= total_q > 0 ? Math.round(unseen/total_q*100) : 100;
+        const mastered = hist_entries.filter(h => h.correct_streak >= MASTERED_STREAK).length;
+        
+        const recs = dailyStats.value.filter(s => s.chapter === ch);
+        const lastRec   = [...recs].sort((a,b) => b.date.localeCompare(a.date))[0];
+        const lastActive= lastRec?.date || 'Never';
+        let daysSince   = Infinity;
+        if (lastRec) daysSince = Math.floor((new Date(td) - new Date(lastRec.date)) / 86400000);
+        const isStale = daysSince > 7 && hist_entries.length > 0;
+        let stalenessColor = 'var(--green)', stalenessLabel = 'Active recently';
+        if (daysSince === Infinity)  { stalenessColor='var(--text3)'; stalenessLabel='Never practiced'; }
+        else if (daysSince > 14)     { stalenessColor='var(--red)';   stalenessLabel=daysSince+'d ago — needs attention'; }
+        else if (daysSince > 7)      { stalenessColor='var(--orange)';stalenessLabel=daysSince+'d ago'; }
+        return { chapter:ch, acc, isWeak: acc !== null && acc < WEAK_THRESHOLD, recentAcc: recentAcc ?? acc ?? 0, trend, errMix, unseen, unseenPct, mastered, lastActive, isStale, stalenessColor, stalenessLabel };
+      }).sort((a,b) => {
+        if (a.acc === null && b.acc === null) return 0;
+        if (a.acc === null) return -1;
+        if (b.acc === null) return 1;
+        return a.acc - b.acc;
+      });
+    });
+
+    const dueToday = computed(() => {
+      const td = today();
+      const pool = allFiles.value;
+      const hist = history.value;
+      const fresh  = pool.filter(f => selectedChapters.value.includes(f.chapter) && !hist[f.id]).length;
+      const review = pool.filter(f => {
+        if (!selectedChapters.value.includes(f.chapter)) return false;
+        const h = hist[f.id];
+        if (!h || h.last_practiced===td) return false;
+        if (h.correct_streak >= MASTERED_STREAK) return false;
+        return !h.next_due || h.next_due <= td;
+      }).length;
+      return { fresh, review, total: fresh + review };
+    });
+
+    const errorBreakdown = computed(() => {
+      let concept=0, calc=0, slow=0, correct=0;
+      for (const h of Object.values(history.value)) {
+        for (const ev of (h.events||[])) {
+          if (ev.result==='concept_error') concept++;
+          else if (ev.result==='calc_error') calc++;
+          else if (ev.result==='slow') slow++;
+          else if (ev.result==='correct') correct++;
+        }
+      }
+      const total = concept+calc+slow+correct || 1;
+      return [
+        { label:'Concept Error', count:concept, pct:Math.round(concept/total*100), color:'var(--red)' },
+        { label:'Calc Error',    count:calc,    pct:Math.round(calc/total*100),    color:'var(--orange)' },
+        { label:'Slow',          count:slow,    pct:Math.round(slow/total*100),    color:'var(--yellow)' },
+        { label:'Correct',       count:correct, pct:Math.round(correct/total*100), color:'var(--green)' },
+      ];
+    });
+
+    const overviewStats = computed(() => {
+      const total    = Object.values(history.value).length;
+      const mastered = Object.values(history.value).filter(h=>h.correct_streak>=MASTERED_STREAK).length;
+      let totalAttempts = 0;
+      let totalWrong = 0;
+      for (const h of Object.values(history.value)) {
+        for (const ev of (h.events || [])) {
+          totalAttempts++;
+          if (ev.result === 'calc_error' || ev.result === 'concept_error') totalWrong++;
+        }
+      }
+      const oacc = totalAttempts > 0 ? ((totalAttempts - totalWrong) / totalAttempts) * 100 : null;
+      const weakCount = chapterStats.value.filter(s=>s.isWeak).length;
+      const staleCount= chapterStats.value.filter(s=>s.isStale).length;
+      return [
+        {val:total,                                      label:'Questions Seen',   color:'var(--blue)'},
+        {val:mastered,                                   label:'Mastered',         color:'var(--green)'},
+        {val:oacc!==null?oacc.toFixed(1)+'%':'—', label:'Overall Accuracy', color:oacc===null?'var(--text3)':oacc>=75?'var(--green)':oacc>=50?'var(--yellow)':'var(--red)'},
+        {val:weakCount,                                  label:'Weak Chapters',    color:weakCount>0?'var(--red)':'var(--green)'},
+        {val:staleCount,                                 label:'Stale Chapters',   color:staleCount>0?'var(--orange)':'var(--green)'},
+        {val:dueToday.value.total,                 label:'Due Today',        color:dueToday.value.total>0?'var(--accent)':'var(--text3)'},
+      ];
+    });
+
+    const problemBank = computed(() => {
+      return allFiles.value
+        .filter(f => {
+          const h = history.value[f.id];
+          if (!h) return false;
+          if (pbFilter.value==='wrong') {
+            if (h.times_wrong < pbThreshold.value) return false;
+            if (h.correct_streak >= MASTERED_STREAK) return false;
+            if (h.correct_streak > 0) return false;
+            return true;
+          } else {
+            if (h.times_slow < pbThreshold.value) return false;
+            if (h.fast_correct_streak >= MASTERED_STREAK) return false;
+            if (h.fast_correct_streak > 0) return false;
+            return true;
+          }
+        })
+        .map(f => ({
+          ...f,
+          correctAnswer: history.value[f.id]?.correctAnswer || null,
+          solution:      history.value[f.id]?.solution      || null,
+          _hist:         history.value[f.id]
+        }))
+        .sort((a,b) => {
+          const key = pbFilter.value==='wrong' ? 'times_wrong' : 'times_slow';
+          return (b._hist[key]||0) - (a._hist[key]||0);
+        });
+    });
+
+    // ── FIX 9: SPEED BLIND-SPOT ELIMINATION IN HEALTH & OFFENDERS ──
+    const srsHealth = computed(() => {
+      const td = today();
+      const total = allFiles.value.length;
+      if (!total) return null;
+      let unseen=0, mastered=0, overdue=0, upcoming=0, inBank=0;
+      for (const f of allFiles.value) {
+        const h = history.value[f.id];
+        if (!h) { unseen++; continue; }
+        if (h.correct_streak >= MASTERED_STREAK) { mastered++; continue; }
+        const isStuck = h.times_wrong >= 2 && h.correct_streak === 0;
+        if (isStuck) { inBank++; continue; }
+        if (!h.next_due || h.next_due <= td) overdue++;
+        else upcoming++;
+      }
+      return { total, unseen, mastered, overdue, upcoming, inBank };
+    });
+
+    const weeklyTrend = computed(() => {
+      const result = [];
+      for (let i = 11; i >= 0; i--) {
+        const end = new Date();
+        end.setDate(end.getDate() - i * 7);
+        end.setMinutes(end.getMinutes() - end.getTimezoneOffset());
+        const start = new Date(end);
+        start.setDate(start.getDate() - 6);
+        const endStr   = end.toISOString().split('T')[0];
+        const startStr = start.toISOString().split('T')[0];
+        const recs = dailyStats.value.filter(s => s.date >= startStr && s.date <= endStr);
+        const p = recs.reduce((a,b) => a+b.practiced, 0);
+        const w = recs.reduce((a,b) => a+b.wrong, 0);
+        result.push({ label: endStr.slice(5).replace('-','/'), acc: p > 0 ? (p-w)/p*100 : null, practiced: p });
+      }
+      return result;
+    });
+
+    const svgTrendPath = computed(() => {
+      const pts = weeklyTrend.value;
+      if (!pts.length) return null;
+      const W=560, H=110, padL=34, padR=8, padT=10, padB=24;
+      const xW = W-padL-padR, yH = H-padT-padB;
+      const baseY = padT + yH;
+      const xs = i => padL + (i/(pts.length-1)) * xW;
+      const ys = v => padT + yH - (v/100) * yH;
+      const mapped = pts.map((p,i) => ({ x:xs(i), y:p.acc!==null?ys(p.acc):null, ...p }));
+      const segs = []; let cur = [];
+      for (const p of mapped) {
+        if (p.y !== null) cur.push(p);
+        else if (cur.length) { segs.push([...cur]); cur = []; }
+      }
+      if (cur.length) segs.push(cur);
+      const paths = segs.map(seg => ({
+        line: seg.map((p,j) => (j===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' '),
+        area: seg.length>1 ? seg.map((p,j) => (j===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ')
+          +' L'+seg[seg.length-1].x.toFixed(1)+','+baseY+' L'+seg[0].x.toFixed(1)+','+baseY+'Z' : ''
+      }));
+      const hasData = segs.some(s => s.length >= 2);
+      return { paths, mapped, W, H, padL, padR, padT, padB, baseY, hasData };
+    });
+
+    const heatmapData = computed(() => {
+      const counts = {};
+      for (const s of dailyStats.value) counts[s.date] = (counts[s.date]||0) + s.practiced;
+      const maxCount = Math.max(...Object.values(counts), 1);
+      const days = [];
+      for (let i = 90; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        const ds = d.toISOString().split('T')[0];
+        const count = counts[ds] || 0;
+        days.push({ date:ds, count, intensity: count/maxCount });
+      }
+      return days;
+    });
+
+    const heatmapGrid = computed(() => {
+      const data = heatmapData.value;
+      if (!data.length) return [];
+      const dow = new Date(data[0].date + 'T12:00:00').getDay();
+      const padded = [...Array(dow).fill(null), ...data];
+      const grid = [];
+      for (let i = 0; i < padded.length; i += 7) {
+        const week = padded.slice(i, i+7);
+        while (week.length < 7) week.push(null);
+        grid.push(week);
+      }
+      return grid;
+    });
+
+    const speedByChapter = computed(() => {
+      return chapters.value.map(ch => {
+        const times = [];
+        for (const [,h] of Object.entries(history.value)) {
+          if (h.chapter !== ch) continue;
+          for (const ev of (h.events||[])) {
+            if (ev.t && ev.t > 3 && ev.t < 600) times.push(ev.t);
+          }
+        }
+        if (!times.length) return null;
+        const avg = Math.round(times.reduce((a,b)=>a+b,0)/times.length);
+        return { chapter:ch, avg, samples:times.length };
+      }).filter(Boolean).sort((a,b) => b.avg - a.avg);
+    });
+
+   const repeatOffenders = computed(() => {
+      return Object.entries(history.value)
+        .filter(([,h]) => h.times_wrong >= 2 && h.correct_streak < MASTERED_STREAK)
+        .map(([id, h]) => {
+          const f = allFiles.value.find(f => f.id === id);
+          return { id, name: f?.name || id.slice(0,10)+'…', chapter:h.chapter, times_wrong:h.times_wrong, times_slow:h.times_slow, correct_streak:h.correct_streak };
+        })
+        .sort((a,b) => b.times_wrong - a.times_wrong)
+        .slice(0, 12);
+    });
+
+    const formatTime = (s) => {
+      if (!s && s !== 0) return '—';
+      if (s < 60) return s + 's';
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return sec > 0 ? `${m}m ${sec.toString().padStart(2,'0')}s` : `${m}m`;
+    };
+
+    const palTimeClass = (s) => {
+      if (!s || s <= 0) return '';
+      if (s <= 60)  return 't-fast';
+      if (s <= 90) return 't-warn';
+      return 't-slow';
+    };
+
+    const startTick = () => {
+      clearInterval(tickHandle);
+      tick.value       = 0;
+      qStartTime.value = Date.now();
+      tickHandle = setInterval(() => { tick.value++; }, 1000);
+    };
+
+    const stopTick = () => {
+      clearInterval(tickHandle);
+      tickHandle = null;
+      tick.value = 0;
+    };
+
+    const pauseSession = () => {
+      if (isPaused.value) return;
+      isPaused.value = true;
+      if (qStartTime.value !== null && session.value[qIndex.value]) {
+        const elapsed = Math.round((Date.now() - qStartTime.value) / 1000);
+        session.value[qIndex.value].timeSpent = (session.value[qIndex.value].timeSpent || 0) + elapsed;
+        qStartTime.value = null;
+      }
+      clearInterval(tickHandle);
+      tickHandle = null;
+      clearInterval(timerHandle);
+    };
+
+    const resumeSession = () => {
+      if (!isPaused.value) return;
+      isPaused.value = false;
+      qStartTime.value = Date.now();
+      clearInterval(tickHandle);
+      tickHandle = setInterval(() => { tick.value++; }, 1000);
+      if (sessionMode.value === 'timed' && timeLeft.value > 0) startTimer();
+    };
+
+    watch(qIndex, (newVal, oldVal) => {
+      if (view.value !== 'practice') return;
+      if (isPaused.value) return;
+      if (session.value[oldVal] !== undefined) {
+        if (qStartTime.value !== null) {
+          const elapsed = Math.round((Date.now() - qStartTime.value) / 1000);
+          session.value[oldVal].timeSpent = (session.value[oldVal].timeSpent || 0) + elapsed;
+        }
+      }
+      qStartTime.value = Date.now();
+    });
+
+    const shuffle = (arr) => {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+
+    // ── FIX 5: FULL FILE SHA-256 HASHING ──
+    const hashFile = async (file) => {
+      if (!crypto?.subtle) throw new Error('Secure context required. Open via localhost or https://');
+      const buf    = await file.arrayBuffer();
+      const digest = await crypto.subtle.digest('SHA-256', buf);
+      return Array.from(new Uint8Array(digest)).slice(0,8).map(b=>b.toString(16).padStart(2,'0')).join('');
+    };
+
+    const loadFiles = async (e) => {
+      allFiles.value.forEach(f => URL.revokeObjectURL(f.url));
+      isHashing.value  = true;
+      hashProgress.value = 0;
+      const rawFiles = [];
+      for (const file of e.target.files) {
+        if (/\.(jpg|jpeg|png|webp)$/i.test(file.name) && file.webkitRelativePath) {
+          const parts = file.webkitRelativePath.split('/');
+          if (parts.length > 2) rawFiles.push({ file, chapter: parts[1].toLowerCase() });
+        }
+      }
+      // Hash up to 4 images concurrently; IDs remain identical to the previous version.
+      const files = new Array(rawFiles.length);
+      const chapSet = new Set();
+      let completed = 0;
+      let nextIndex = 0;
+
+      const worker = async () => {
+        while (true) {
+          const i = nextIndex++;
+          if (i >= rawFiles.length) return;
+
+          const { file, chapter } = rawFiles[i];
+          const id = await hashFile(file);
+          const url = URL.createObjectURL(file);
+          files[i] = { id, name:file.name, chapter, file, url };
+          chapSet.add(chapter);
+          completed++;
+          hashProgress.value = Math.round((completed / rawFiles.length) * 100);
+
+          if (completed % 20 === 0) await new Promise(r => setTimeout(r, 0));
+        }
+      };
+
+      await Promise.all(
+        Array.from({ length: Math.min(4, rawFiles.length) }, () => worker())
+      );
+      allFiles.value       = files;
+      chapters.value       = [...chapSet].sort();
+      selectedChapters.value = [...chapters.value];
+      isHashing.value    = false;
+
+      let historyChanged = false;
+      for (const f of files) {
+        const h = history.value[f.id];
+        if (h && h.chapter !== f.chapter) {
+          h.chapter = f.chapter;
+          historyChanged = true;
+        }
+      }
+      if (historyChanged) saveHistory();
+    };
+
+    const toggleChapter = (ch) => {
+      const idx = selectedChapters.value.indexOf(ch);
+      if (idx >= 0) selectedChapters.value.splice(idx, 1);
+      else selectedChapters.value.push(ch);
+    };
+
+    const toggleAll = () => {
+      selectedChapters.value = selectedChapters.value.length === chapters.value.length
+        ? [] : [...chapters.value];
+    };
+
+    // ── FIX 8: STRICT REVIEW MODE FILTERING ──
+    const weightedSelect = (pool, n) => {
+      const hist  = history.value;
+      const td    = today();
+      
+      if (reviewMode.value) {
+        const masteredQs = pool.filter(f => hist[f.id]?.correct_streak >= MASTERED_STREAK);
+        return shuffle(masteredQs).slice(0, n);
+      }
+
+      const ratio = mixStrategy.value==='focus_new' ? 0.95
+                  : mixStrategy.value==='focus_review' ? 0.05 : 0.75;
+      const freshQs = pool.filter(f => !hist[f.id]);
+      const dueQs   = pool.filter(f => {
+        const h = hist[f.id];
+        if (!h || h.last_practiced===td) return false;
+        if (h.correct_streak >= MASTERED_STREAK) return false;
+        return !h.next_due || h.next_due <= td;
+      });
+      const wantNew = Math.ceil(n * ratio);
+      const wantOld = n - wantNew;
+      let chosen = [...shuffle(freshQs).slice(0,wantNew), ...shuffle(dueQs).slice(0,wantOld)];
+      if (chosen.length < n) {
+        const already = new Set(chosen.map(f=>f.id));
+        chosen = [...chosen, ...shuffle(pool.filter(f => {
+          if (already.has(f.id)) return false;
+          if (hist[f.id]?.last_practiced === td) return false;
+          return hist[f.id]?.correct_streak < MASTERED_STREAK;
+        })).slice(0, n-chosen.length)];
+      }
+      return shuffle(chosen).slice(0,n);
+    };
+
+    const startSession = () => {
+      const pool   = allFiles.value.filter(f => selectedChapters.value.includes(f.chapter));
+      const picked = weightedSelect(pool, numQuestions.value);
+      if (!picked.length) return alert('No questions matched criteria.');
+
+      session.value = picked.map(q => ({
+        ...q,
+        correctAnswer:   history.value[q.id]?.correctAnswer || null,
+        solution:        history.value[q.id]?.solution      || null,
+        userAnswer:      null,
+        userMarking:     null,
+        markedForReview: false,
+        visited:         false,
+        timeSpent:       0,
+      }));
+
+      qIndex.value  = 0;
+      isPaused.value = false;
+      view.value    = 'practice';
+      saveSessionState();
+      startTick();
+
+      if (sessionMode.value==='timed') {
+        timeLeft.value = sessionDuration.value * 60;
+        startTimer();
+      }
+    };
+
+    const startTimer = () => {
+      clearInterval(timerHandle);
+      timerHandle = setInterval(() => {
+        timeLeft.value--;
+        if (timeLeft.value <= 0) { clearInterval(timerHandle); endSession(); }
+        saveSessionState();
+      }, 1000);
+    };
+
+    const selectAnswer = (opt) => {
+      if (!currentQ.value || isPaused.value) return;
+      currentQ.value.userAnswer = opt;
+      currentQ.value.visited    = true;
+      saveSessionState();
+    };
+
+    const toggleMark = () => {
+      if (!currentQ.value || isPaused.value) return;
+      currentQ.value.markedForReview = !currentQ.value.markedForReview;
+      saveSessionState();
+    };
+
+    const markAndNext = () => {
+      if (!currentQ.value || isPaused.value) return;
+      currentQ.value.markedForReview = true;
+      currentQ.value.visited = true;
+      if (qIndex.value < session.value.length-1) qIndex.value++;
+      else endSession();
+      saveSessionState();
+    };
+
+    const nextQuestion = () => {
+      if (!currentQ.value || isPaused.value) return;
+      currentQ.value.visited = true;
+      if (qIndex.value < session.value.length-1) qIndex.value++;
+      else confirmEndSession();
+      saveSessionState();
+    };
+
+    const confirmEndSession = () => {
+      showConfirm('Finish Test?', 'All unanswered questions will remain unmarked.', 'Submit', endSession);
+    };
+
+    const endSession = () => {
+      if (qStartTime.value !== null && session.value[qIndex.value]) {
+        const elapsed = Math.round((Date.now() - qStartTime.value) / 1000);
+        session.value[qIndex.value].timeSpent = (session.value[qIndex.value].timeSpent || 0) + elapsed;
+      }
+      stopTick();
+      isPaused.value = false;
+      clearInterval(timerHandle);
+      localStorage.removeItem('pe_session');
+      view.value = 'summary';
+      activeSummaryQ.value = null;
+      summaryFilter.value  = 'all';
+      if (cloudUser.value) syncToCloud();
+    };
+
+    // ── FIX 6 & 7: SAME-DAY MASTERY & MIDNIGHT FREEZE PRESERVATION ──
+    const markResult = (question, newResult) => {
+      if (!question) return;
+      const oldResult = question.userMarking;
+      question.userMarking = newResult;
+
+      const sessionQ = session.value.find(q => q.id === question.id);
+      if (sessionQ) sessionQ.userMarking = newResult;
+
+      let entry = history.value[question.id];
+      if (!entry) entry = makeEntry(question.chapter);
+
+      const td        = today();
+      const lastEvent = entry.events[entry.events.length-1];
+      const isSameDayRemark = lastEvent && lastEvent.date === td;
+      const isSessionRemark = oldResult !== undefined && oldResult !== null;
+
+      if (isSameDayRemark || isSessionRemark) {
+        if (lastEvent) {
+          lastEvent.date   = td;
+          lastEvent.result = newResult;
+          lastEvent.t      = sessionQ?.timeSpent || lastEvent.t || 0;
+        } else {
+          entry.events.push({ date:td, result:newResult, t: sessionQ?.timeSpent||0 });
+        }
+      } else {
+        entry.events.push({ date:td, result:newResult, t: sessionQ?.timeSpent||0 });
+      }
+
+      entry.last_practiced = td;
+      recompute(entry);
+      setNextDue(entry, newResult);
+      history.value[question.id] = entry;
+      saveHistory();
+
+      if (history.value[question.id]?.correctAnswer) {
+        question.correctAnswer = history.value[question.id].correctAnswer;
+        if (sessionQ) sessionQ.correctAnswer = question.correctAnswer;
+      }
+
+      if (view.value==='summary' && !isSessionRemark) {
+        const filtered = filteredSummary.value;
+        const idx = filtered.findIndex(q => q.id === question.id);
+        if (idx !== -1 && idx < filtered.length - 1) setSummaryQ(filtered[idx + 1]);
+      }
+
+      if (view.value==='problem_bank' && activePBQ.value?.id===question.id) {
+        const h = history.value[question.id];
+        const stillInBank = pbFilter.value==='wrong'
+          ? (h.times_wrong >= pbThreshold.value && h.correct_streak === 0)
+          : (h.times_slow  >= pbThreshold.value && h.fast_correct_streak === 0);
+        if (!stillInBank) activePBQ.value = null;
+      }
+    };
+
+    const saveAnswer = (question, opt) => {
+      question.correctAnswer = opt;
+      if (!history.value[question.id]) history.value[question.id] = makeEntry(question.chapter);
+      history.value[question.id].correctAnswer = opt;
+      const sessionQ = session.value.find(q => q.id === question.id);
+      if (sessionQ) sessionQ.correctAnswer = opt;
+      if (activePBQ.value?.id === question.id) activePBQ.value.correctAnswer = opt;
+      saveHistory();
+      editingAnswer.value = false;
+    };
+
+    // ── FIX 12: SAFE MATHJAX ASYNC RENDERING ──
+    const generateSolution = async (question) => {
+      if (!geminiKey.value) return alert('Set your Gemini API key in Settings first.');
+      if (!question.file)   return alert('Question file not available in this session.');
+      if (question.solution && !confirm('Regenerate solution?')) return;
+      aiLoading.value = true;
+      aiError.value   = null;
+      try {
+        const base64 = await fileToBase64(question.file);
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey.value}`,
+          { method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ contents:[{ parts:[{text:AI_PROMPT},{inlineData:{mimeType:question.file.type,data:base64}}] }] }) }
+        );
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        if (!data.candidates?.length) throw new Error('No response from Gemini — check your API key or try again.');
+        const candidate = data.candidates[0];
+        if (candidate.finishReason && candidate.finishReason !== 'STOP' && candidate.finishReason !== 'MAX_TOKENS') {
+          throw new Error(`Gemini blocked the response (${candidate.finishReason}). Try a different question.`);
+        }
+        if (!candidate.content?.parts?.[0]?.text) {
+          throw new Error('Gemini returned an empty response. Try again.');
+        }
+        const text = candidate.content.parts[0].text;
+        question.solution = text;
+        if (activePBQ.value?.id === question.id) activePBQ.value.solution = text;
+        if (!history.value[question.id]) history.value[question.id] = makeEntry(question.chapter);
+        history.value[question.id].solution = text;
+        try {
+          const clean = text.replace(/```json\s*|\s*```/g,'').trim();
+          const match = clean.match(/\{[\s\S]*\}/);
+          if (match) {
+            const parsed = JSON.parse(match[0]);
+            const opt = (parsed.correctOption||'').toUpperCase();
+            if (['A','B','C','D'].includes(opt)) {
+              question.correctAnswer = opt;
+              history.value[question.id].correctAnswer = opt;
+              if (activePBQ.value?.id === question.id) activePBQ.value.correctAnswer = opt;
+            }
+          }
+        } catch {}
+        saveHistory();
+        nextTick(() => {
+          if (window.MathJax && window.MathJax.typesetPromise) {
+            MathJax.typesetPromise().catch(err => console.warn('MathJax rendering error:', err));
+          }
+        });
+      } catch(e) {
+        aiError.value = e.message;
+      } finally {
+        aiLoading.value = false;
+      }
+    };
+
+    const fileToBase64 = file => new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload  = () => res(r.result.split(',')[1]);
+      r.onerror = () => rej(new Error('File read failed'));
+      r.readAsDataURL(file);
+    });
+
+    const escapeHtml = (str) => {
+      if (typeof str !== 'string') return '';
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    };
+
+    const renderSolution = (text) => {
+      if (!text) return '';
+      try {
+        const clean = text.replace(/```json\s*|\s*```/g,'').trim();
+        const match = clean.match(/\{[\s\S]*\}/);
+        if (!match) return `<div class="sol-raw">${marked.parse(text)}</div>`;
+        const d = JSON.parse(match[0]);
+        let html = '<div class="sol-body">';
+        if (d.steps?.length) {
+          html += '<div class="sol-steps">';
+          d.steps.forEach((s,i) => {
+            html += `<div class="sol-step"><span class="sol-num">${i+1}</span><div class="sol-text">${escapeHtml(s)}</div></div>`;
+          });
+          html += '</div>';
+        }
+        if (d.sscShortcut && d.sscShortcut !== 'null' && d.sscShortcut !== null) {
+          html += `<div class="sol-shortcut"><div class="sol-shortcut-label">⚡ Shortcut</div><div class="sol-shortcut-text">${escapeHtml(d.sscShortcut)}</div></div>`;
+        }
+        if (d.finalAnswer) {
+          html += `<div class="sol-answer"><div class="sol-answer-val">${escapeHtml(d.finalAnswer)}</div><div class="sol-answer-opt">${d.correctOption ? 'Option '+escapeHtml(d.correctOption) : ''}</div></div>`;
+        }
+        if (d.commonTrap && d.commonTrap !== 'null' && d.commonTrap !== null) {
+          html += `<div class="sol-trap"><div class="sol-trap-text">⚠ ${escapeHtml(d.commonTrap)}</div></div>`;
+        }
+        html += '</div>';
+        return html;
+      } catch {
+        return `<div class="sol-raw">${marked.parse(text)}</div>`;
+      }
+    };
+
+    const setSummaryQ = (q) => {
+      const liveFile  = allFiles.value.find(f => f.id === q.id);
+      const histEntry = history.value[q.id];
+      const correctAnswer = q.correctAnswer || histEntry?.correctAnswer || null;
+      const solution      = q.solution      || histEntry?.solution      || null;
+      activeSummaryQ.value = liveFile
+        ? { ...q, url: liveFile.url, file: liveFile.file, correctAnswer, solution }
+        : { ...q, correctAnswer, solution };
+      editingAnswer.value  = false;
+      aiError.value        = null;
+      if (solution) {
+        nextTick(() => {
+          if (window.MathJax && window.MathJax.typesetPromise) {
+            MathJax.typesetPromise().catch(err => console.warn('MathJax rendering error:', err));
+          }
+        });
+      }
+    };
+
+    const setPBQ = (q) => {
+      const fileRef = allFiles.value.find(f => f.id===q.id);
+      activePBQ.value = fileRef ? {...q, file:fileRef.file, url:fileRef.url} : q;
+      editingAnswer.value = false;
+      aiError.value       = null;
+    };
+
+    const originalIndex = (q) => session.value.findIndex(s => s.id===q.id);
+
+    const goSetup = () => {
+      clearInterval(timerHandle);
+      stopTick();
+      isPaused.value       = false;
+      session.value        = [];
+      activeSummaryQ.value = null;
+      view.value           = 'setup';
+    };
+
+    const navigateTo = (target) => {
+      if (view.value === 'summary') {
+        showConfirm('Leave Review?', 'Your session results will be lost if you navigate away.', 'Leave', () => {
+          session.value        = [];
+          activeSummaryQ.value = null;
+          view.value           = target;
+        });
+        return;
+      }
+      view.value = target;
+    };
+
+    const saveHistory = () => {
+      try {
+        const stripped = {};
+        for (const [id, entry] of Object.entries(history.value)) {
+          stripped[id] = { ...entry, solution: null };
+        }
+        localStorage.setItem('pe_history', JSON.stringify(stripped));
+      } catch(e) {
+        if (e.name === 'QuotaExceededError') {
+          alert('Local storage full! Your SRS data is safe in the cloud. Use Settings → Export Backup or clear old data.');
+        }
+      }
+    };
+
+    const saveSessionState = () => {
+      try {
+        localStorage.setItem('pe_session', JSON.stringify({
+          questions:   session.value.map(q => ({...q, file:null, url:null})),
+          qIndex:      qIndex.value,
+          sessionMode: sessionMode.value,
+          timeLeft:    timeLeft.value,
+          ts:          Date.now()
+        }));
+      } catch {}
+    };
+
+    const tryRestoreSession = () => {
+      try {
+        const raw = localStorage.getItem('pe_session');
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        if (Date.now() - saved.ts > 2*60*60*1000) { localStorage.removeItem('pe_session'); return; }
+        if (!confirm('Resume interrupted session?')) { localStorage.removeItem('pe_session'); return; }
+        const restored = saved.questions.map(sq => {
+          const f = allFiles.value.find(f => f.id === sq.id);
+          if (!f) return null;
+          return { ...sq, chapter: f.chapter, file: f.file, url: f.url, timeSpent: sq.timeSpent || 0 };
+        }).filter(Boolean);
+        if (restored.length > 0) {
+          session.value    = restored;
+          qIndex.value     = saved.qIndex;
+          sessionMode.value= saved.sessionMode;
+          timeLeft.value   = saved.timeLeft;
+          view.value       = 'practice';
+          isPaused.value   = false;
+          startTick();
+          if (saved.sessionMode==='timed') startTimer();
+        } else {
+          localStorage.removeItem('pe_session');
+        }
+      } catch { localStorage.removeItem('pe_session'); }
+    };
+
+    watch(allFiles, v => { if (v.length > 0) tryRestoreSession(); });
+    watch(() => availableCount.value, newMax => {
+      if (numQuestions.value > newMax) numQuestions.value = newMax;
+    });
+
+    const initFirebase = () => {
+      try {
+        if (typeof firebase === 'undefined') { authChecked.value = true; return; }
+        if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+        firebase.auth().onAuthStateChanged(u => {
+          cloudUser.value = u;
+          authChecked.value = true;
+          authLoading.value = false;
+          if (u) loadFromCloud();
+        });
+      } catch(e) {
+        console.warn('[Firebase] Init failed:', e.message);
+        authChecked.value = true;
+      }
+    };
+
+    const signInGoogle = async () => {
+      authLoading.value = true;
+      authError.value   = '';
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        await firebase.auth().signInWithPopup(provider);
+      } catch(e) {
+        authError.value   = e.message;
+        authLoading.value = false;
+      }
+    };
+
+    const signOut = async () => {
+      if (!confirm('Sign out? Your data is saved in the cloud.')) return;
+      await firebase.auth().signOut();
+      cloudUser.value   = null;
+      authChecked.value = true;
+    };
+
+    const syncToCloud = async () => {
+      if (!cloudUser.value) return;
+      isSyncing.value = true;
+      try {
+        const historyToSync = {};
+        for (const [id, entry] of Object.entries(history.value)) {
+          historyToSync[id] = { ...entry, solution: null };
+        }
+        await firebase.firestore().collection('userData').doc(cloudUser.value.uid).set({
+          history: historyToSync,
+          updated: new Date().toISOString()
+        });
+        lastSynced.value = new Date().toLocaleTimeString();
+      } catch(e) { alert('Sync failed: '+e.message); }
+      finally { isSyncing.value = false; }
+    };
+
+    // ── FIX 10: MULTI-DEVICE UNION CLOUD SYNC ──
+    const loadFromCloud = async () => {
+      try {
+        const doc = await firebase.firestore().collection('userData').doc(cloudUser.value.uid).get();
+        if (!doc.exists) return;
+        const data = doc.data();
+        if (data.history) {
+          const merged = { ...data.history };
+          for (const [id, localEntry] of Object.entries(history.value)) {
+            const cloudEntry = merged[id];
+            if (!cloudEntry) {
+              merged[id] = localEntry;
+            } else {
+              const eventMap = new Map();
+              for (const ev of (cloudEntry.events || [])) eventMap.set(`${ev.date}|${ev.result}|${ev.t}`, ev);
+              for (const ev of (localEntry.events || [])) eventMap.set(`${ev.date}|${ev.result}|${ev.t}`, ev);
+              
+              const mergedEvents = Array.from(eventMap.values()).sort((a,b) => a.date.localeCompare(b.date));
+              cloudEntry.events = mergedEvents;
+              recompute(cloudEntry);
+              
+              const localDate = localEntry.last_practiced || '';
+              const cloudDate = cloudEntry.last_practiced || '';
+              cloudEntry.last_practiced = localDate >= cloudDate ? localDate : cloudDate;
+              if (localEntry.next_due && (!cloudEntry.next_due || localEntry.next_due < cloudEntry.next_due)) {
+                cloudEntry.next_due = localEntry.next_due;
+              }
+              merged[id] = cloudEntry;
+            }
+          }
+          history.value = merged;
+          saveHistory();
+        }
+        lastSynced.value = data.updated ? new Date(data.updated).toLocaleTimeString() : '';
+      } catch(e) { console.warn('[Firebase] Load failed:', e.message); }
+    };
+
+    const saveSettings = () => {
+      localStorage.setItem('pe_gemini_key', geminiKey.value);
+      showSettings.value = false;
+    };
+
+    const exportData = () => {
+      const blob = new Blob([JSON.stringify({history:history.value}, null, 2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `practice_backup_${today()}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+
+    const importData = (e) => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const d = JSON.parse(ev.target.result);
+          if (d.history) { history.value = {...history.value, ...d.history}; saveHistory(); }
+          alert(`Import successful! ${d.history ? Object.keys(d.history).length : 0} questions loaded.`);
+        } catch { alert('Invalid backup file.'); }
+      };
+      reader.readAsText(e.target.files[0]);
+    };
+
+    const confirmClear = () => showConfirm('Clear All Data?', 'This will erase all history and stats permanently.', 'Clear', () => {
+      localStorage.clear(); location.reload();
+    });
+
+    const showConfirm = (title, message, label, action) => {
+      if (view.value === 'practice' && !isPaused.value && qStartTime.value !== null) {
+        const elapsed = Math.round((Date.now() - qStartTime.value) / 1000);
+        if (session.value[qIndex.value]) {
+          session.value[qIndex.value].timeSpent = (session.value[qIndex.value].timeSpent || 0) + elapsed;
+        }
+        qStartTime.value = null;
+        clearInterval(timerHandle);
+      }
+      confirmAction.value = action;
+      confirmDialog.value = { show: true, title, message, label };
+    };
+
+    const dismissConfirm = () => {
+      confirmDialog.value.show = false;
+      if (view.value === 'practice' && !isPaused.value) {
+        qStartTime.value = Date.now();
+        if (sessionMode.value === 'timed' && timeLeft.value > 0) startTimer();
+      }
+    };
+
+    const runConfirmAction = () => {
+      confirmDialog.value.show = false;
+      confirmAction.value();
+    };
+
+    onMounted(() => {
+      try {
+        const raw = JSON.parse(localStorage.getItem('pe_history'));
+        if (raw) history.value = raw;
+      } catch { history.value = {}; }
+      geminiKey.value = localStorage.getItem('pe_gemini_key') || '';
+      initFirebase();
+    });
+
+    return {
+      view, allFiles, chapters, selectedChapters, numQuestions, sessionMode, sessionDuration, mixStrategy, reviewMode,
+      chapterCounts, availableCount, session, qIndex, currentQ, formattedTime, timeLeft,
+      activeSummaryQ, summaryFilter, summaryFilters, filteredSummary, editingAnswer,
+      pbFilter, pbThreshold, activePBQ, problemBank,
+      srsHealth, svgTrendPath, heatmapGrid, speedByChapter, repeatOffenders,
+      aiLoading, aiError, showSettings, geminiKey,
+      cloudUser, isSyncing, lastSynced, authChecked, authLoading, authError,
+      markedCount, score, accuracy, resultCounts, resultTypes,
+      chapterStats, overviewStats, dueToday, errorBreakdown,
+      confirmDialog, isHashing, hashProgress,
+      isPaused, pauseSession, resumeSession,
+      liveElapsed, elapsedClass, avgTime, formatTime, palTimeClass,
+      loadFiles, toggleChapter, toggleAll, startSession,
+      selectAnswer, toggleMark, markAndNext, nextQuestion, confirmEndSession, endSession,
+      markResult, saveAnswer, generateSolution, renderSolution,
+      setSummaryQ, setPBQ, originalIndex, goSetup, navigateTo,
+      saveSettings, exportData, importData, confirmClear,
+      dismissConfirm, runConfirmAction,
+      signInGoogle, signOut, syncToCloud,
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
