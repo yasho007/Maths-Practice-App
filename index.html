@@ -1765,17 +1765,48 @@ createApp({
           if (parts.length > 2) rawFiles.push({ file, chapter: parts[1].toLowerCase() });
         }
       }
-      const files = [];
-      const chapSet = new Set();
-      for (let i = 0; i < rawFiles.length; i++) {
-        const { file, chapter } = rawFiles[i];
-        const id  = await hashFile(file);
-        const url = URL.createObjectURL(file);
-        files.push({ id, name:file.name, chapter, file, url });
-        chapSet.add(chapter);
-        hashProgress.value = Math.round(((i+1)/rawFiles.length)*100);
-        if (i % 20 === 0) await new Promise(r => setTimeout(r, 0));
-      }
+      
+const files = new Array(rawFiles.length);
+const chapSet = new Set();
+let completed = 0;
+let nextIndex = 0;
+
+const worker = async () => {
+  while (true) {
+    const i = nextIndex++;
+    if (i >= rawFiles.length) return;
+
+    const { file, chapter } = rawFiles[i];
+    const id = await hashFile(file);
+    const url = URL.createObjectURL(file);
+
+    files[i] = {
+      id,
+      name: file.name,
+      chapter,
+      file,
+      url
+    };
+
+    chapSet.add(chapter);
+    completed++;
+    hashProgress.value = Math.round(
+      (completed / rawFiles.length) * 100
+    );
+
+    if (completed % 20 === 0) {
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+};
+
+await Promise.all(
+  Array.from(
+    { length: Math.min(4, rawFiles.length) },
+    () => worker()
+  )
+);
+      
       allFiles.value       = files;
       chapters.value       = [...chapSet].sort();
       selectedChapters.value = [...chapters.value];
